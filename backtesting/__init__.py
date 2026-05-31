@@ -1,0 +1,1 @@
+"""Backtesting harness — historical simulation and performance reporting."""

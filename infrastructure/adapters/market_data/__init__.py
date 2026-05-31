@@ -1,0 +1,1 @@
+"""Market data adapters — exchange WebSocket and REST feed implementations."""

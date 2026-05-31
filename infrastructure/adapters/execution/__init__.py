@@ -1,0 +1,1 @@
+"""Execution adapters — paper trading, live broker connections."""

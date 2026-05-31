@@ -1,0 +1,1 @@
+"""Unit tests — isolated tests for domain entities and business logic."""

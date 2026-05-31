@@ -1,0 +1,1 @@
+"""Concrete adapter implementations that satisfy the application port interfaces."""

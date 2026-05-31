@@ -1,0 +1,1 @@
+"""Application use cases — each module encapsulates one discrete business operation."""

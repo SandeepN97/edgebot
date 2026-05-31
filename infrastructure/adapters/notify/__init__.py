@@ -1,0 +1,1 @@
+"""Notification adapters — Telegram, email, and other alerting channels."""

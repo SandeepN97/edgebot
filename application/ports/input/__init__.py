@@ -1,0 +1,1 @@
+"""Input ports — interfaces that drive the application (market data, signals)."""

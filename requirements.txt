@@ -1,0 +1,35 @@
+# ── Exchange & Market Data ──────────────────────────────────────────────────
+ccxt>=4.3.0                   # Multi-exchange trading library (REST + WebSocket)
+ccxt[async]>=4.3.0            # ccxt async/pro WebSocket support
+
+# ── Strategy Framework ──────────────────────────────────────────────────────
+# freqtrade>=2024.1             # Optional: Freqtrade for live strategy deployment
+                               # Uncomment when deploying strategies to Freqtrade bot
+
+# ── Backtesting ─────────────────────────────────────────────────────────────
+backtrader>=1.9.78.123         # Backtesting engine
+yfinance>=0.2.38               # Historical OHLCV data download
+
+# ── Data Science & ML ───────────────────────────────────────────────────────
+pandas>=2.2.0                  # DataFrame operations for strategy logic
+numpy>=1.26.0                  # Numerical computing
+scikit-learn>=1.4.0            # ML utilities (feature engineering, cross-validation)
+lightgbm>=4.3.0                # Gradient boosting for ML signal generation
+
+# ── Notifications ────────────────────────────────────────────────────────────
+python-telegram-bot>=21.0.0    # Telegram Bot API (async)
+
+# ── Persistence ─────────────────────────────────────────────────────────────
+aiosqlite>=0.20.0              # Async SQLite driver
+
+# ── Metrics & Observability ─────────────────────────────────────────────────
+influxdb-client>=1.41.0        # InfluxDB v2 client for time-series metrics
+
+# ── Testing ──────────────────────────────────────────────────────────────────
+pytest>=8.1.0                  # Test runner
+pytest-asyncio>=0.23.0         # Async test support
+pytest-cov>=5.0.0              # Code coverage reporting
+
+# ── Code Quality ─────────────────────────────────────────────────────────────
+ruff>=0.4.0                    # Fast linter + formatter (replaces flake8/black/isort)
+mypy>=1.9.0                    # Static type checking

@@ -1,0 +1,1 @@
+"""Application layer — orchestrates use cases via ports, bridges domain and infrastructure."""

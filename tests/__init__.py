@@ -1,0 +1,1 @@
+"""Test suite root — unit, integration, and end-to-end tests for EdgeBot."""

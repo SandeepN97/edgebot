@@ -1,0 +1,91 @@
+# EdgeBot — Docker Compose service definitions
+# Services: edgebot (bot), sqlite (volume mount), grafana (dashboards), telegram-bot (proxy)
+
+version: "3.9"
+
+services:
+
+  # ── EdgeBot trading application ──────────────────────────────────────────
+  edgebot:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: edgebot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - edgebot_data:/app/data          # SQLite database persistence
+      - ./logs:/app/logs                # Application log files
+    depends_on:
+      - influxdb
+    networks:
+      - edgebot_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import domain; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ── InfluxDB — time-series metrics storage ────────────────────────────────
+  influxdb:
+    image: influxdb:2.7-alpine
+    container_name: edgebot_influxdb
+    restart: unless-stopped
+    ports:
+      - "8086:8086"
+    volumes:
+      - influxdb_data:/var/lib/influxdb2
+      - influxdb_config:/etc/influxdb2
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: edgebot
+      DOCKER_INFLUXDB_INIT_PASSWORD: edgebotpass
+      DOCKER_INFLUXDB_INIT_ORG: edgebot
+      DOCKER_INFLUXDB_INIT_BUCKET: trading_metrics
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: ${INFLUXDB_TOKEN:-dev-token-change-me}
+    networks:
+      - edgebot_net
+
+  # ── Grafana — trading dashboards ──────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: edgebot_grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./docker/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-changeme}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+    depends_on:
+      - influxdb
+    networks:
+      - edgebot_net
+
+  # ── Telegram Bot proxy (optional — run separately if preferred) ───────────
+  # Uncomment to run a lightweight Telegram bot proxy container.
+  # telegram-bot:
+  #   image: python:3.11-slim
+  #   container_name: edgebot_telegram
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   command: python -m edgebot.telegram_main
+  #   networks:
+  #     - edgebot_net
+
+volumes:
+  edgebot_data:
+  influxdb_data:
+  influxdb_config:
+  grafana_data:
+
+networks:
+  edgebot_net:
+    driver: bridge
