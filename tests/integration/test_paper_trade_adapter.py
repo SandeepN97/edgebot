@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import asyncio
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from domain.entities.order import Order, OrderSide, OrderStatus, OrderType
 from infrastructure.adapters.execution.paper_trade_adapter import PaperTradeAdapter
 
-
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
+
 
 @pytest.fixture
 def adapter() -> PaperTradeAdapter:
@@ -24,7 +24,9 @@ def adapter() -> PaperTradeAdapter:
     )
 
 
-def _market_order(symbol: str = "BTC/USDT", side: OrderSide = OrderSide.BUY, qty: float = 0.1) -> Order:
+def _market_order(
+    symbol: str = "BTC/USDT", side: OrderSide = OrderSide.BUY, qty: float = 0.1
+) -> Order:
     return Order(
         symbol=symbol,
         side=side,
@@ -51,6 +53,7 @@ def _limit_order(
 # ------------------------------------------------------------------
 # Market order tests
 # ------------------------------------------------------------------
+
 
 class TestMarketOrders:
     @pytest.mark.asyncio
@@ -94,6 +97,7 @@ class TestMarketOrders:
 # Limit order tests
 # ------------------------------------------------------------------
 
+
 class TestLimitOrders:
     @pytest.mark.asyncio
     async def test_limit_buy_fills_when_price_drops(self, adapter: PaperTradeAdapter) -> None:
@@ -124,6 +128,7 @@ class TestLimitOrders:
 # ------------------------------------------------------------------
 # Order management tests
 # ------------------------------------------------------------------
+
 
 class TestOrderManagement:
     @pytest.mark.asyncio
@@ -191,6 +196,7 @@ class TestOrderManagement:
 # ------------------------------------------------------------------
 # Exchange ID assignment
 # ------------------------------------------------------------------
+
 
 class TestExchangeId:
     @pytest.mark.asyncio

@@ -8,10 +8,7 @@ knowledge lives here.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-
-_UTC = timezone.utc
-from typing import Optional
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from domain.entities.signal import Direction
@@ -44,8 +41,8 @@ class Position:
     strategy_id: str
     current_price: float = field(init=False)
     position_id: UUID = field(default_factory=uuid4)
-    opened_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
+    opened_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
         self.current_price = self.entry_price
@@ -53,7 +50,7 @@ class Position:
     def update_price(self, price: float) -> None:
         """Refresh current_price on each market tick."""
         self.current_price = price
-        self.updated_at = datetime.now(_UTC)
+        self.updated_at = datetime.now(UTC)
 
     @property
     def unrealized_pnl(self) -> float:
@@ -107,4 +104,4 @@ class Position:
         if qty > self.quantity:
             raise ValueError(f"Cannot reduce by {qty}; position size is {self.quantity}")
         self.quantity -= qty
-        self.updated_at = datetime.now(_UTC)
+        self.updated_at = datetime.now(UTC)

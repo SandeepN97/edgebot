@@ -9,8 +9,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime
-from typing import Dict, List, Optional
 from uuid import UUID
 
 from application.ports.output.i_order_port import IOrderPort
@@ -40,8 +38,8 @@ class PaperTradeAdapter(IOrderPort):
         self.maker_fee_pct = maker_fee_pct
         self.taker_fee_pct = taker_fee_pct
         self.fill_delay_ms = fill_delay_ms
-        self._orders: Dict[UUID, Order] = {}
-        self._current_prices: Dict[str, float] = {}
+        self._orders: dict[UUID, Order] = {}
+        self._current_prices: dict[str, float] = {}
 
     # ------------------------------------------------------------------
     # IOrderPort implementation
@@ -70,16 +68,17 @@ class PaperTradeAdapter(IOrderPort):
         logger.info("Paper order cancelled: %s", order_id)
         return order
 
-    async def get_order(self, order_id: UUID) -> Optional[Order]:
+    async def get_order(self, order_id: UUID) -> Order | None:
         return self._orders.get(order_id)
 
-    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def get_open_orders(self, symbol: str | None = None) -> list[Order]:
         return [
-            o for o in self._orders.values()
+            o
+            for o in self._orders.values()
             if not o.is_terminal and (symbol is None or o.symbol == symbol)
         ]
 
-    async def cancel_all_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def cancel_all_orders(self, symbol: str | None = None) -> list[Order]:
         cancelled = []
         for order in await self.get_open_orders(symbol):
             await self.cancel_order(order.order_id)
@@ -119,9 +118,8 @@ class PaperTradeAdapter(IOrderPort):
                 continue
             if order.price is None:
                 continue
-            triggered = (
-                (order.side.value == "buy" and price <= order.price)
-                or (order.side.value == "sell" and price >= order.price)
+            triggered = (order.side.value == "buy" and price <= order.price) or (
+                order.side.value == "sell" and price >= order.price
             )
             if triggered:
                 fee = order.price * order.quantity * self.maker_fee_pct

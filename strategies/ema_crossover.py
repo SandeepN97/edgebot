@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from typing import Deque, List, Optional, Tuple
 
 from application.ports.input.i_signal_port import ISignalPort
 from domain.entities.market_snapshot import MarketSnapshot
@@ -34,8 +33,8 @@ _RSI_HIGH = 70.0
 _VOLUME_MA_PERIOD = 20
 _VOLUME_MULTIPLIER = 1.2
 _ATR_PERIOD = 14
-_ATR_SL_MULTIPLIER = 1.5   # stop-loss = entry ± ATR × 1.5
-_ATR_TP_MULTIPLIER = 3.0   # take-profit = entry ± ATR × 3.0
+_ATR_SL_MULTIPLIER = 1.5  # stop-loss = entry ± ATR × 1.5
+_ATR_TP_MULTIPLIER = 3.0  # take-profit = entry ± ATR × 3.0
 
 
 class EmaCrossoverStrategy(ISignalPort):
@@ -56,12 +55,12 @@ class EmaCrossoverStrategy(ISignalPort):
         self._symbol = symbol
         self._market = market
         self._timeframe = timeframe
-        self._closes: Deque[float] = deque(maxlen=max(_EMA_SLOW, _RSI_PERIOD) + 50)
-        self._volumes: Deque[float] = deque(maxlen=_VOLUME_MA_PERIOD + 5)
-        self._highs: Deque[float] = deque(maxlen=_ATR_PERIOD + 5)
-        self._lows: Deque[float] = deque(maxlen=_ATR_PERIOD + 5)
-        self._prev_ema_fast: Optional[float] = None
-        self._prev_ema_slow: Optional[float] = None
+        self._closes: deque[float] = deque(maxlen=max(_EMA_SLOW, _RSI_PERIOD) + 50)
+        self._volumes: deque[float] = deque(maxlen=_VOLUME_MA_PERIOD + 5)
+        self._highs: deque[float] = deque(maxlen=_ATR_PERIOD + 5)
+        self._lows: deque[float] = deque(maxlen=_ATR_PERIOD + 5)
+        self._prev_ema_fast: float | None = None
+        self._prev_ema_slow: float | None = None
         self._warmed_up: bool = False
 
     # ------------------------------------------------------------------
@@ -76,7 +75,7 @@ class EmaCrossoverStrategy(ISignalPort):
     def required_warmup_bars(self) -> int:
         return _EMA_SLOW + _RSI_PERIOD + _VOLUME_MA_PERIOD
 
-    def warm_up(self, history: List[MarketSnapshot]) -> None:
+    def warm_up(self, history: list[MarketSnapshot]) -> None:
         """Pre-load historical candles to seed all indicators."""
         for snap in history:
             self._push_candle(snap)
@@ -88,7 +87,7 @@ class EmaCrossoverStrategy(ISignalPort):
             self._symbol,
         )
 
-    async def on_candle(self, snapshot: MarketSnapshot) -> List[Signal]:
+    async def on_candle(self, snapshot: MarketSnapshot) -> list[Signal]:
         """Evaluate a closed candle and return 0 or 1 signals."""
         if snapshot.symbol != self._symbol or not snapshot.is_closed:
             return []
@@ -108,10 +107,7 @@ class EmaCrossoverStrategy(ISignalPort):
 
         signal = None
 
-        if (
-            self._prev_ema_fast is not None
-            and self._prev_ema_slow is not None
-        ):
+        if self._prev_ema_fast is not None and self._prev_ema_slow is not None:
             bull_cross = self._prev_ema_fast <= self._prev_ema_slow and ema_fast > ema_slow
             bear_cross = self._prev_ema_fast >= self._prev_ema_slow and ema_fast < ema_slow
             volume_ok = current_volume > avg_volume * _VOLUME_MULTIPLIER
@@ -188,7 +184,8 @@ class EmaCrossoverStrategy(ISignalPort):
 # Pure indicator functions (no class state)
 # ------------------------------------------------------------------
 
-def _ema(closes: List[float], period: int) -> float:
+
+def _ema(closes: list[float], period: int) -> float:
     """Exponential moving average of the last `period` closes."""
     if len(closes) < period:
         return sum(closes) / len(closes)
@@ -199,7 +196,7 @@ def _ema(closes: List[float], period: int) -> float:
     return ema
 
 
-def _rsi(closes: List[float], period: int = 14) -> float:
+def _rsi(closes: list[float], period: int = 14) -> float:
     """Wilder RSI from a list of closing prices."""
     if len(closes) < period + 1:
         return 50.0
@@ -214,7 +211,7 @@ def _rsi(closes: List[float], period: int = 14) -> float:
     return 100.0 - (100.0 / (1 + rs))
 
 
-def _atr(highs: List[float], lows: List[float], closes: List[float], period: int = 14) -> float:
+def _atr(highs: list[float], lows: list[float], closes: list[float], period: int = 14) -> float:
     """Average True Range (Wilder smoothing)."""
     if len(highs) < 2:
         return (highs[-1] - lows[-1]) if highs else 0.0

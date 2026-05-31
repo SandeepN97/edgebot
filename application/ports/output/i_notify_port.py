@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Optional
 
 from domain.entities.order import Order
-from domain.entities.trade import Trade
 from domain.entities.signal import Signal
+from domain.entities.trade import Trade
 
 
 class AlertLevel(Enum):
@@ -64,7 +63,7 @@ class INotifyPort(ABC):
         self,
         message: str,
         level: AlertLevel = AlertLevel.INFO,
-        chat_id: Optional[str] = None,
+        chat_id: str | None = None,
     ) -> None:
         """Send a free-form message at a given severity level.
 

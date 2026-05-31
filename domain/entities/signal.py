@@ -8,11 +8,8 @@ routes them through the risk engine before any order is placed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-
-_UTC = timezone.utc
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 
 
 class Direction(Enum):
@@ -59,8 +56,8 @@ class Signal:
     take_profit: float
     strategy_id: str
     reason: str
-    entry_price: Optional[float] = None
-    timestamp: datetime = field(default_factory=lambda: datetime.now(_UTC))
+    entry_price: float | None = None
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     timeframe: str = "4h"
     metadata: dict = field(default_factory=dict)
 
@@ -73,7 +70,7 @@ class Signal:
             raise ValueError("take_profit must be positive")
 
     @property
-    def risk_reward_ratio(self) -> Optional[float]:
+    def risk_reward_ratio(self) -> float | None:
         """Compute raw R:R from entry → TP / entry → SL (requires entry_price)."""
         if self.entry_price is None:
             return None

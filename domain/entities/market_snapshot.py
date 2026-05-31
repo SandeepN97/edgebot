@@ -6,9 +6,8 @@ strategies consume.  It is a pure domain value object with no I/O.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -40,8 +39,8 @@ class MarketSnapshot:
     close: float
     volume: float
     quote_volume: float = 0.0
-    bid: Optional[float] = None
-    ask: Optional[float] = None
+    bid: float | None = None
+    ask: float | None = None
     trades: int = 0
     is_closed: bool = True
 
@@ -52,14 +51,14 @@ class MarketSnapshot:
             raise ValueError("volume cannot be negative")
 
     @property
-    def spread(self) -> Optional[float]:
+    def spread(self) -> float | None:
         """Absolute bid–ask spread; None when tick data is unavailable."""
         if self.bid is not None and self.ask is not None:
             return self.ask - self.bid
         return None
 
     @property
-    def spread_pct(self) -> Optional[float]:
+    def spread_pct(self) -> float | None:
         """Spread as a fraction of mid-price."""
         if self.spread is None:
             return None
@@ -67,7 +66,7 @@ class MarketSnapshot:
         return self.spread / mid if mid else None
 
     @property
-    def mid_price(self) -> Optional[float]:
+    def mid_price(self) -> float | None:
         """Mid-market price when both sides of the book are available."""
         if self.bid is not None and self.ask is not None:
             return (self.bid + self.ask) / 2

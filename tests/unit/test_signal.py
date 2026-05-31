@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime
+
+import pytest
 
 from domain.entities.signal import Direction, Market, Signal
 
@@ -106,7 +107,9 @@ class TestIsEntryIsExit:
         assert _valid_signal(direction=Direction.LONG).is_entry
 
     def test_short_is_entry(self) -> None:
-        assert _valid_signal(direction=Direction.SHORT, stop_loss=31_000.0, take_profit=28_000.0).is_entry
+        assert _valid_signal(
+            direction=Direction.SHORT, stop_loss=31_000.0, take_profit=28_000.0
+        ).is_entry
 
     def test_flat_is_exit(self) -> None:
         s = Signal(

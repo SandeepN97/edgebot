@@ -8,10 +8,9 @@ trading and live trading without touching any business logic.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
 from uuid import UUID
 
-from domain.entities.order import Order, OrderStatus
+from domain.entities.order import Order
 
 
 class IOrderPort(ABC):
@@ -42,18 +41,18 @@ class IOrderPort(ABC):
         """
 
     @abstractmethod
-    async def get_order(self, order_id: UUID) -> Optional[Order]:
+    async def get_order(self, order_id: UUID) -> Order | None:
         """Retrieve the current state of an order by its internal ID.
 
         Returns None if the order is not found at the execution venue.
         """
 
     @abstractmethod
-    async def get_open_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def get_open_orders(self, symbol: str | None = None) -> list[Order]:
         """Return all currently open (unfilled) orders, optionally filtered by symbol."""
 
     @abstractmethod
-    async def cancel_all_orders(self, symbol: Optional[str] = None) -> List[Order]:
+    async def cancel_all_orders(self, symbol: str | None = None) -> list[Order]:
         """Cancel all open orders, optionally filtered by symbol.
 
         Returns the list of cancelled orders.

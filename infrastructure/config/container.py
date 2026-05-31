@@ -9,21 +9,20 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Optional
 
+from application.use_cases.evaluate_risk import EvaluateRisk
+from application.use_cases.record_trade import RecordTrade
+from application.use_cases.run_strategy import RunStrategy
 from domain.portfolio.portfolio_state import PortfolioState
 from domain.risk.circuit_breaker import CircuitBreaker
 from domain.risk.risk_engine import (
-    RiskEngine,
-    MAX_POSITION_SIZE_PCT,
     DAILY_LOSS_LIMIT_PCT,
-    MAX_OPEN_POSITIONS,
-    MIN_RISK_REWARD_RATIO,
     FEE_BUFFER_PCT,
+    MAX_OPEN_POSITIONS,
+    MAX_POSITION_SIZE_PCT,
+    MIN_RISK_REWARD_RATIO,
+    RiskEngine,
 )
-from application.use_cases.evaluate_risk import EvaluateRisk
-from application.use_cases.run_strategy import RunStrategy
-from application.use_cases.record_trade import RecordTrade
 from infrastructure.adapters.execution.paper_trade_adapter import PaperTradeAdapter
 from infrastructure.adapters.market_data.binance_ws_adapter import BinanceWsAdapter
 from infrastructure.adapters.notify.telegram_adapter import TelegramAdapter
@@ -46,9 +45,7 @@ class AppConfig:
     telegram_chat_id: str = field(default_factory=lambda: os.getenv("TELEGRAM_CHAT_ID", ""))
 
     # Portfolio
-    initial_cash: float = field(
-        default_factory=lambda: float(os.getenv("INITIAL_CASH", "10000"))
-    )
+    initial_cash: float = field(default_factory=lambda: float(os.getenv("INITIAL_CASH", "10000")))
 
     # Database
     db_path: str = field(default_factory=lambda: os.getenv("DB_PATH", "data/edgebot.db"))
@@ -98,14 +95,12 @@ class DependencyContainer:
         await container.stop()
     """
 
-    def __init__(self, config: Optional[AppConfig] = None) -> None:
+    def __init__(self, config: AppConfig | None = None) -> None:
         self.config = config or AppConfig()
 
         # Domain singletons
         self.portfolio = PortfolioState(initial_cash=self.config.initial_cash)
-        self.circuit_breaker = CircuitBreaker(
-            daily_loss_limit_pct=self.config.daily_loss_limit_pct
-        )
+        self.circuit_breaker = CircuitBreaker(daily_loss_limit_pct=self.config.daily_loss_limit_pct)
         self.risk_engine = RiskEngine(
             max_position_size_pct=self.config.max_position_size_pct,
             daily_loss_limit_pct=self.config.daily_loss_limit_pct,

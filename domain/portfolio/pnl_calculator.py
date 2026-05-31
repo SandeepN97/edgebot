@@ -7,7 +7,6 @@ It aggregates PnL metrics across a collection of trades and positions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
 
 from domain.entities.position import Position
 from domain.entities.trade import Trade
@@ -56,7 +55,7 @@ class PnLReport:
         return self.win_count / self.total_trades if self.total_trades else 0.0
 
     @property
-    def profit_factor(self) -> Optional[float]:
+    def profit_factor(self) -> float | None:
         """Gross wins / gross losses; None when there are no losing trades."""
         gross_wins = self.win_count * self.avg_win
         gross_losses = self.loss_count * self.avg_loss
@@ -72,25 +71,25 @@ class PnLCalculator:
     """Stateless service for computing PnL metrics from domain collections."""
 
     @staticmethod
-    def compute_realized(trades: List[Trade]) -> float:
+    def compute_realized(trades: list[Trade]) -> float:
         """Sum net PnL across all completed trades."""
         return sum(t.net_pnl for t in trades)
 
     @staticmethod
-    def compute_unrealized(positions: List[Position]) -> float:
+    def compute_unrealized(positions: list[Position]) -> float:
         """Sum mark-to-market PnL across all open positions."""
         return sum(p.unrealized_pnl for p in positions)
 
     @staticmethod
-    def total_fees(trades: List[Trade]) -> float:
+    def total_fees(trades: list[Trade]) -> float:
         """Aggregate all fees paid across completed trades."""
         return sum(t.total_fees for t in trades)
 
     @classmethod
     def full_report(
         cls,
-        trades: List[Trade],
-        positions: List[Position],
+        trades: list[Trade],
+        positions: list[Position],
     ) -> PnLReport:
         """Build a PnLReport from a list of completed trades and open positions."""
         wins = [t for t in trades if t.is_winner]
@@ -114,7 +113,7 @@ class PnLCalculator:
         )
 
     @staticmethod
-    def max_drawdown(equity_curve: List[float]) -> float:
+    def max_drawdown(equity_curve: list[float]) -> float:
         """Compute maximum drawdown from a list of equity values."""
         if not equity_curve:
             return 0.0
@@ -130,15 +129,16 @@ class PnLCalculator:
 
     @staticmethod
     def sharpe_ratio(
-        returns: List[float], risk_free_rate: float = 0.0, periods_per_year: int = 252
-    ) -> Optional[float]:
+        returns: list[float], risk_free_rate: float = 0.0, periods_per_year: int = 252
+    ) -> float | None:
         """Annualised Sharpe ratio from a list of periodic returns."""
         if len(returns) < 2:
             return None
         import statistics
+
         excess = [r - risk_free_rate / periods_per_year for r in returns]
         mean_excess = statistics.mean(excess)
         std_excess = statistics.stdev(excess)
         if std_excess == 0:
             return None
-        return (mean_excess / std_excess) * (periods_per_year ** 0.5)
+        return (mean_excess / std_excess) * (periods_per_year**0.5)

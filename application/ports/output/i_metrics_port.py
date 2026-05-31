@@ -7,7 +7,6 @@ application can record performance data without importing any metrics library.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
 
 
 class IMetricsPort(ABC):
@@ -47,19 +46,13 @@ class IMetricsPort(ABC):
         """Push a periodic portfolio snapshot for dashboarding."""
 
     @abstractmethod
-    async def record_order_latency(
-        self, symbol: str, latency_ms: float, order_type: str
-    ) -> None:
+    async def record_order_latency(self, symbol: str, latency_ms: float, order_type: str) -> None:
         """Track round-trip order submission latency in milliseconds."""
 
     @abstractmethod
-    async def increment_counter(
-        self, name: str, tags: Optional[Dict[str, str]] = None
-    ) -> None:
+    async def increment_counter(self, name: str, tags: dict[str, str] | None = None) -> None:
         """Increment an arbitrary named counter with optional tags."""
 
     @abstractmethod
-    async def set_gauge(
-        self, name: str, value: float, tags: Optional[Dict[str, str]] = None
-    ) -> None:
+    async def set_gauge(self, name: str, value: float, tags: dict[str, str] | None = None) -> None:
         """Set an arbitrary named gauge to a specific value."""

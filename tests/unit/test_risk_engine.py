@@ -3,24 +3,21 @@
 from __future__ import annotations
 
 import pytest
-from datetime import datetime
-from uuid import uuid4
 
-from domain.entities.signal import Signal, Direction, Market
 from domain.entities.position import Position
+from domain.entities.signal import Direction, Market, Signal
 from domain.risk.risk_engine import (
-    RiskEngine,
-    MAX_POSITION_SIZE_PCT,
     DAILY_LOSS_LIMIT_PCT,
-    MAX_OPEN_POSITIONS,
-    MIN_RISK_REWARD_RATIO,
     FEE_BUFFER_PCT,
+    MAX_OPEN_POSITIONS,
+    MAX_POSITION_SIZE_PCT,
+    RiskEngine,
 )
-
 
 # ------------------------------------------------------------------
 # Fixtures
 # ------------------------------------------------------------------
+
 
 @pytest.fixture
 def engine() -> RiskEngine:
@@ -64,6 +61,7 @@ def _make_position(symbol: str = "BTC/USDT", direction: Direction = Direction.LO
 # Happy-path tests
 # ------------------------------------------------------------------
 
+
 class TestRiskEngineApproved:
     def test_valid_signal_is_approved(self, engine: RiskEngine) -> None:
         signal = _make_signal()
@@ -95,6 +93,7 @@ class TestRiskEngineApproved:
 # Daily loss limit tests
 # ------------------------------------------------------------------
 
+
 class TestDailyLossLimit:
     def test_below_daily_loss_limit_passes(self, engine: RiskEngine) -> None:
         nav = 10_000.0
@@ -124,26 +123,28 @@ class TestDailyLossLimit:
 # Max open positions tests
 # ------------------------------------------------------------------
 
+
 class TestMaxOpenPositions:
     def test_max_positions_exactly_at_limit_rejected(self, engine: RiskEngine) -> None:
-        positions = [
-            _make_position(f"SYM{i}/USDT") for i in range(MAX_OPEN_POSITIONS)
-        ]
-        verdict = engine.evaluate(_make_signal(), nav=10_000, daily_loss=0, open_positions=positions)
+        positions = [_make_position(f"SYM{i}/USDT") for i in range(MAX_OPEN_POSITIONS)]
+        verdict = engine.evaluate(
+            _make_signal(), nav=10_000, daily_loss=0, open_positions=positions
+        )
         assert not verdict.approved
         assert any("Max open positions" in r for r in verdict.reasons)
 
     def test_one_below_max_positions_approved(self, engine: RiskEngine) -> None:
-        positions = [
-            _make_position(f"SYM{i}/USDT") for i in range(MAX_OPEN_POSITIONS - 1)
-        ]
-        verdict = engine.evaluate(_make_signal(), nav=10_000, daily_loss=0, open_positions=positions)
+        positions = [_make_position(f"SYM{i}/USDT") for i in range(MAX_OPEN_POSITIONS - 1)]
+        verdict = engine.evaluate(
+            _make_signal(), nav=10_000, daily_loss=0, open_positions=positions
+        )
         assert verdict.approved
 
 
 # ------------------------------------------------------------------
 # Risk-reward ratio tests
 # ------------------------------------------------------------------
+
 
 class TestRiskRewardRatio:
     def test_rr_exactly_at_minimum_approved(self, engine: RiskEngine) -> None:
@@ -181,6 +182,7 @@ class TestRiskRewardRatio:
 # Duplicate position guard
 # ------------------------------------------------------------------
 
+
 class TestDuplicatePositionGuard:
     def test_duplicate_symbol_direction_rejected(self, engine: RiskEngine) -> None:
         existing = _make_position("BTC/USDT", Direction.LONG)
@@ -201,11 +203,14 @@ class TestDuplicatePositionGuard:
 # Custom risk limits
 # ------------------------------------------------------------------
 
+
 class TestCustomLimits:
     def test_custom_max_positions(self) -> None:
         engine = RiskEngine(max_open_positions=1)
         positions = [_make_position("ETH/USDT")]
-        verdict = engine.evaluate(_make_signal(), nav=10_000, daily_loss=0, open_positions=positions)
+        verdict = engine.evaluate(
+            _make_signal(), nav=10_000, daily_loss=0, open_positions=positions
+        )
         assert not verdict.approved
 
     def test_custom_rr_ratio(self) -> None:
@@ -221,6 +226,8 @@ class TestCustomLimits:
         positions = [_make_position(f"SYM{i}/USDT") for i in range(MAX_OPEN_POSITIONS)]
         bad_signal = _make_signal(entry=100.0, sl=99.0, tp=101.0)  # R:R=1
         daily_loss = nav * DAILY_LOSS_LIMIT_PCT
-        verdict = engine.evaluate(bad_signal, nav=nav, daily_loss=daily_loss, open_positions=positions)
+        verdict = engine.evaluate(
+            bad_signal, nav=nav, daily_loss=daily_loss, open_positions=positions
+        )
         assert not verdict.approved
         assert len(verdict.reasons) >= 2

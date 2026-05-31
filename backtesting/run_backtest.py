@@ -13,7 +13,6 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
-from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +34,8 @@ def main() -> None:
 
     try:
         import backtrader as bt  # type: ignore[import]
-        import yfinance as yf  # type: ignore[import]
         import pandas as pd  # type: ignore[import]
+        import yfinance as yf  # type: ignore[import]
     except ImportError as exc:
         logger.error("Missing dependency: %s — run: pip install backtrader yfinance pandas", exc)
         sys.exit(1)
@@ -130,8 +129,6 @@ def main() -> None:
 
             if not self.position:
                 if self.crossover[0] > 0 and rsi_ok and vol_ok:
-                    sl = self.data.close[0] - self.atr[0] * self.p.atr_sl_mult
-                    tp = self.data.close[0] + self.atr[0] * self.p.atr_tp_mult
                     size = (self.broker.cash * 0.02) / self.data.close[0]
                     self.order = self.buy(size=size)
                 elif self.crossover[0] < 0 and rsi_ok and vol_ok:

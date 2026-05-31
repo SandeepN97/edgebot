@@ -7,16 +7,14 @@ first connection.
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
 from uuid import UUID
 
-from domain.entities.order import Order, OrderSide, OrderStatus, OrderType
-from domain.entities.trade import Trade
+from domain.entities.order import Order
 from domain.entities.signal import Direction
+from domain.entities.trade import Trade
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +129,10 @@ class SQLiteAdapter:
 
     async def load_trades(
         self,
-        symbol: Optional[str] = None,
-        strategy_id: Optional[str] = None,
+        symbol: str | None = None,
+        strategy_id: str | None = None,
         limit: int = 500,
-    ) -> List[Trade]:
+    ) -> list[Trade]:
         """Load historical trades from the database."""
         self._require_connected()
         clauses = []

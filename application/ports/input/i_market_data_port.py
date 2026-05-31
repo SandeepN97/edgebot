@@ -8,7 +8,7 @@ imports any exchange library.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List, Optional
+from collections.abc import AsyncIterator
 
 from domain.entities.market_snapshot import MarketSnapshot
 
@@ -39,8 +39,8 @@ class IMarketDataPort(ABC):
         symbol: str,
         timeframe: str,
         limit: int = 500,
-        since: Optional[int] = None,
-    ) -> List[MarketSnapshot]:
+        since: int | None = None,
+    ) -> list[MarketSnapshot]:
         """Fetch historical OHLCV candles for indicator warm-up.
 
         Args:
@@ -54,7 +54,7 @@ class IMarketDataPort(ABC):
         """
 
     @abstractmethod
-    async def get_latest(self, symbol: str, timeframe: str) -> Optional[MarketSnapshot]:
+    async def get_latest(self, symbol: str, timeframe: str) -> MarketSnapshot | None:
         """Return the most recent closed candle for a symbol/timeframe pair."""
 
     @abstractmethod

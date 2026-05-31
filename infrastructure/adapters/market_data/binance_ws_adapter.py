@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import datetime, timezone
-from typing import AsyncIterator, Dict, List, Optional, Set, Tuple
+from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 
 from application.ports.input.i_market_data_port import IMarketDataPort
 from domain.entities.market_snapshot import MarketSnapshot
@@ -39,7 +39,7 @@ class BinanceWsAdapter(IMarketDataPort):
         self._testnet = testnet
         self._exchange_id = exchange_id
         self._exchange = None
-        self._subscriptions: Set[Tuple[str, str]] = set()
+        self._subscriptions: set[tuple[str, str]] = set()
         self._snapshot_queue: asyncio.Queue[MarketSnapshot] = asyncio.Queue()
 
     async def connect(self) -> None:
@@ -94,8 +94,8 @@ class BinanceWsAdapter(IMarketDataPort):
         symbol: str,
         timeframe: str,
         limit: int = 500,
-        since: Optional[int] = None,
-    ) -> List[MarketSnapshot]:
+        since: int | None = None,
+    ) -> list[MarketSnapshot]:
         """Fetch historical OHLCV bars for indicator warm-up."""
         self._require_connected()
         raw = await self._exchange.fetch_ohlcv(
@@ -103,7 +103,7 @@ class BinanceWsAdapter(IMarketDataPort):
         )
         return [self._candle_to_snapshot(symbol, timeframe, row, closed=True) for row in raw]
 
-    async def get_latest(self, symbol: str, timeframe: str) -> Optional[MarketSnapshot]:
+    async def get_latest(self, symbol: str, timeframe: str) -> MarketSnapshot | None:
         """Return the most recent closed candle."""
         history = await self.fetch_history(symbol, timeframe, limit=1)
         return history[-1] if history else None
@@ -122,9 +122,7 @@ class BinanceWsAdapter(IMarketDataPort):
                 for row in candles:
                     ts = row[0]
                     if ts != prev_ts:
-                        snapshot = self._candle_to_snapshot(
-                            symbol, timeframe, row, closed=True
-                        )
+                        snapshot = self._candle_to_snapshot(symbol, timeframe, row, closed=True)
                         await self._snapshot_queue.put(snapshot)
                         prev_ts = ts
             except Exception as exc:
@@ -138,7 +136,7 @@ class BinanceWsAdapter(IMarketDataPort):
         row: list,
         closed: bool = True,
     ) -> MarketSnapshot:
-        ts = datetime.fromtimestamp(row[0] / 1000, tz=timezone.utc).replace(tzinfo=None)
+        ts = datetime.fromtimestamp(row[0] / 1000, tz=UTC).replace(tzinfo=None)
         return MarketSnapshot(
             symbol=symbol,
             timeframe=timeframe,

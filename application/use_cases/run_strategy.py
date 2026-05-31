@@ -12,9 +12,7 @@ It depends only on ports (interfaces), never on concrete adapters.
 from __future__ import annotations
 
 import logging
-from typing import List
 
-from application.ports.input.i_market_data_port import IMarketDataPort
 from application.ports.input.i_signal_port import ISignalPort
 from application.ports.output.i_metrics_port import IMetricsPort
 from application.ports.output.i_notify_port import INotifyPort
@@ -60,7 +58,7 @@ class RunStrategy:
         self._portfolio = portfolio
         self._circuit_breaker = circuit_breaker
 
-    async def on_candle(self, snapshot: MarketSnapshot) -> List[Order]:
+    async def on_candle(self, snapshot: MarketSnapshot) -> list[Order]:
         """Entry point called by the market-data loop on every closed candle.
 
         Returns the list of Orders that were actually submitted this tick.
@@ -73,11 +71,11 @@ class RunStrategy:
             )
             return []
 
-        signals: List[Signal] = await self._signal_port.on_candle(snapshot)
+        signals: list[Signal] = await self._signal_port.on_candle(snapshot)
         if not signals:
             return []
 
-        submitted_orders: List[Order] = []
+        submitted_orders: list[Order] = []
         for signal in signals:
             await self._metrics_port.record_signal(
                 symbol=signal.symbol,
@@ -99,6 +97,7 @@ class RunStrategy:
                 )
                 continue
 
+            assert verdict.adjusted_qty is not None
             order = self._build_order(signal, verdict.adjusted_qty)
             submitted = await self._order_port.submit_order(order)
             submitted_orders.append(submitted)
@@ -123,9 +122,7 @@ class RunStrategy:
     def _build_order(signal: Signal, quantity: float) -> Order:
         """Translate a Signal into an Order domain object."""
         side = OrderSide.BUY if signal.direction is Direction.LONG else OrderSide.SELL
-        order_type = (
-            OrderType.LIMIT if signal.entry_price is not None else OrderType.MARKET
-        )
+        order_type = OrderType.LIMIT if signal.entry_price is not None else OrderType.MARKET
         return Order(
             symbol=signal.symbol,
             side=side,

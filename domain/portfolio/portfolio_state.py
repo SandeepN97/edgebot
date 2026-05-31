@@ -8,11 +8,7 @@ after each trade.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-
-_UTC = timezone.utc
-from typing import Dict, List, Optional
+from datetime import UTC, datetime
 from uuid import UUID
 
 from domain.entities.position import Position
@@ -31,9 +27,9 @@ class PortfolioState:
             raise ValueError("initial_cash cannot be negative")
         self._cash: float = initial_cash
         self._initial_cash: float = initial_cash
-        self._positions: Dict[UUID, Position] = {}
-        self._created_at: datetime = datetime.now(_UTC)
-        self._updated_at: datetime = datetime.now(_UTC)
+        self._positions: dict[UUID, Position] = {}
+        self._created_at: datetime = datetime.now(UTC)
+        self._updated_at: datetime = datetime.now(UTC)
 
     # ------------------------------------------------------------------
     # Properties
@@ -44,7 +40,7 @@ class PortfolioState:
         return self._cash
 
     @property
-    def open_positions(self) -> List[Position]:
+    def open_positions(self) -> list[Position]:
         return list(self._positions.values())
 
     @property
@@ -52,8 +48,8 @@ class PortfolioState:
         return len(self._positions)
 
     @property
-    def positions_by_symbol(self) -> Dict[str, List[Position]]:
-        result: Dict[str, List[Position]] = {}
+    def positions_by_symbol(self) -> dict[str, list[Position]]:
+        result: dict[str, list[Position]] = {}
         for pos in self._positions.values():
             result.setdefault(pos.symbol, []).append(pos)
         return result
@@ -93,9 +89,7 @@ class PortfolioState:
         """
         margin = position.entry_price * position.quantity
         if margin > self._cash:
-            raise ValueError(
-                f"Insufficient cash: need {margin:.2f}, have {self._cash:.2f}"
-            )
+            raise ValueError(f"Insufficient cash: need {margin:.2f}, have {self._cash:.2f}")
         self._positions[position.position_id] = position
         self._cash -= margin
         self._touch()
@@ -118,20 +112,19 @@ class PortfolioState:
         self._touch()
         return realised_pnl
 
-    def update_prices(self, prices: Dict[str, float]) -> None:
+    def update_prices(self, prices: dict[str, float]) -> None:
         """Refresh mark-to-market prices for all open positions."""
         for pos in self._positions.values():
             if pos.symbol in prices:
                 pos.update_price(prices[pos.symbol])
         self._touch()
 
-    def get_position(self, position_id: UUID) -> Optional[Position]:
+    def get_position(self, position_id: UUID) -> Position | None:
         return self._positions.get(position_id)
 
     def has_position(self, symbol: str, direction: Direction) -> bool:
         return any(
-            p.symbol == symbol and p.direction == direction
-            for p in self._positions.values()
+            p.symbol == symbol and p.direction == direction for p in self._positions.values()
         )
 
     def credit_cash(self, amount: float) -> None:
@@ -158,4 +151,4 @@ class PortfolioState:
         }
 
     def _touch(self) -> None:
-        self._updated_at = datetime.now(_UTC)
+        self._updated_at = datetime.now(UTC)

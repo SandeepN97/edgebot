@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class SizingMethod(Enum):
@@ -104,7 +103,7 @@ class PositionSizer:
         )
 
     def fixed_fraction_size(
-        self, nav: float, price: float, fraction: Optional[float] = None
+        self, nav: float, price: float, fraction: float | None = None
     ) -> SizingResult:
         """Allocate a fixed fraction of NAV to a trade."""
         frac = min(fraction or self.fixed_fraction, self.max_fraction)
@@ -117,7 +116,7 @@ class PositionSizer:
             method=SizingMethod.FIXED_FRACTION,
         )
 
-    def fixed_notional_size(self, price: float, notional: Optional[float] = None) -> SizingResult:
+    def fixed_notional_size(self, price: float, notional: float | None = None) -> SizingResult:
         """Trade a fixed dollar notional regardless of portfolio size."""
         amount = notional or self.fixed_notional
         quantity = amount / price if price > 0 else 0.0
@@ -128,9 +127,7 @@ class PositionSizer:
             method=SizingMethod.FIXED_NOTIONAL,
         )
 
-    def optimal_f(
-        self, trades: list[float], nav: float, price: float
-    ) -> SizingResult:
+    def optimal_f(self, trades: list[float], nav: float, price: float) -> SizingResult:
         """Approximate Optimal-f (Vince) via grid search over historical trade PnLs.
 
         The HPR for each trade is: 1 + f * pnl / worst_loss

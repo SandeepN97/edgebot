@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from uuid import uuid4
+
+import pytest
 
 from domain.entities.position import Position
 from domain.entities.signal import Direction
 from domain.portfolio.portfolio_state import PortfolioState
-
 
 INITIAL_CASH = 10_000.0
 
@@ -41,6 +41,7 @@ def _short(symbol: str = "BTC/USDT", entry: float = 100.0, qty: float = 1.0) -> 
 # NAV at entry (before any price move)
 # ------------------------------------------------------------------
 
+
 class TestNavAtEntry:
     def test_nav_equals_initial_cash_before_any_position(self) -> None:
         port = PortfolioState(INITIAL_CASH)
@@ -66,6 +67,7 @@ class TestNavAtEntry:
 # ------------------------------------------------------------------
 # Mark-to-market NAV during open position
 # ------------------------------------------------------------------
+
 
 class TestNavMarkToMarket:
     def test_long_nav_increases_when_price_rises(self) -> None:
@@ -106,6 +108,7 @@ class TestNavMarkToMarket:
 # LONG round-trip
 # ------------------------------------------------------------------
 
+
 class TestLongRoundTrip:
     def test_long_winning_trade_nav_equals_initial_plus_pnl(self) -> None:
         port = PortfolioState(INITIAL_CASH)
@@ -141,6 +144,7 @@ class TestLongRoundTrip:
 # ------------------------------------------------------------------
 # SHORT round-trip
 # ------------------------------------------------------------------
+
 
 class TestShortRoundTrip:
     def test_short_winning_trade_nav_equals_initial_plus_pnl(self) -> None:
@@ -180,6 +184,7 @@ class TestShortRoundTrip:
 # Mixed portfolio (long + short simultaneously)
 # ------------------------------------------------------------------
 
+
 class TestMixedPortfolio:
     def test_long_and_short_nav_sums_correctly(self) -> None:
         port = PortfolioState(INITIAL_CASH)
@@ -201,6 +206,7 @@ class TestMixedPortfolio:
 # ------------------------------------------------------------------
 # Guard rails
 # ------------------------------------------------------------------
+
 
 class TestGuardRails:
     def test_add_position_raises_on_insufficient_cash(self) -> None:

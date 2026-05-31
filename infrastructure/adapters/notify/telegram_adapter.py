@@ -7,7 +7,6 @@ Messages are formatted in Markdown and include emoji severity indicators.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from application.ports.output.i_notify_port import AlertLevel, INotifyPort
 from domain.entities.order import Order
@@ -108,7 +107,7 @@ class TelegramAdapter(INotifyPort):
         self,
         message: str,
         level: AlertLevel = AlertLevel.INFO,
-        chat_id: Optional[str] = None,
+        chat_id: str | None = None,
     ) -> None:
         target = chat_id or self._default_chat_id
         emoji = _LEVEL_EMOJI.get(level, "")

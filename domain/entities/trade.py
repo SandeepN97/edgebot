@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Optional
 from uuid import UUID, uuid4
 
 from domain.entities.signal import Direction
@@ -79,7 +78,7 @@ class Trade:
         return self.net_pnl > 0
 
     @property
-    def risk_reward_achieved(self) -> Optional[float]:
+    def risk_reward_achieved(self) -> float | None:
         """Actual R:R realised — gross_pnl / entry_fee (proxy for risk)."""
         risk = self.entry_price * self.quantity * 0.01  # 1% as surrogate
         return abs(self.gross_pnl) / risk if risk else None

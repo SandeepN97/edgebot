@@ -7,7 +7,6 @@ without knowing which strategy (EMA crossover, ML model, etc.) is running.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import AsyncIterator, List
 
 from domain.entities.market_snapshot import MarketSnapshot
 from domain.entities.signal import Signal
@@ -17,7 +16,7 @@ class ISignalPort(ABC):
     """Driving port: a strategy produces Signals from MarketSnapshots."""
 
     @abstractmethod
-    async def on_candle(self, snapshot: MarketSnapshot) -> List[Signal]:
+    async def on_candle(self, snapshot: MarketSnapshot) -> list[Signal]:
         """Process a new candle and return zero or more signals.
 
         The application layer calls this on every closed candle.  Returning an
@@ -31,7 +30,7 @@ class ISignalPort(ABC):
         """
 
     @abstractmethod
-    def warm_up(self, history: List[MarketSnapshot]) -> None:
+    def warm_up(self, history: list[MarketSnapshot]) -> None:
         """Pre-load historical candles to initialise indicators.
 
         Must be called before the first on_candle() call.  The strategy

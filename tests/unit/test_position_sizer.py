@@ -6,7 +6,6 @@ import pytest
 
 from domain.risk.position_sizer import PositionSizer, SizingMethod
 
-
 NAV = 10_000.0
 PRICE = 100.0
 
@@ -19,6 +18,7 @@ def sizer() -> PositionSizer:
 # ------------------------------------------------------------------
 # Kelly
 # ------------------------------------------------------------------
+
 
 class TestKelly:
     def test_positive_edge_returns_positive_fraction(self, sizer: PositionSizer) -> None:
@@ -38,7 +38,9 @@ class TestKelly:
 
     def test_half_kelly_is_half_of_full_kelly(self, sizer: PositionSizer) -> None:
         full = sizer.kelly(win_rate=0.6, avg_win=150.0, avg_loss=100.0, nav=NAV, price=PRICE)
-        half = sizer.kelly(win_rate=0.6, avg_win=150.0, avg_loss=100.0, nav=NAV, price=PRICE, half=True)
+        half = sizer.kelly(
+            win_rate=0.6, avg_win=150.0, avg_loss=100.0, nav=NAV, price=PRICE, half=True
+        )
         assert half.method == SizingMethod.HALF_KELLY
         # Half-Kelly fraction ≤ full-Kelly (both may be capped at max_fraction)
         assert half.fraction_of_nav <= full.fraction_of_nav + 1e-9
@@ -56,6 +58,7 @@ class TestKelly:
 # Fixed-fraction
 # ------------------------------------------------------------------
 
+
 class TestFixedFraction:
     def test_uses_default_fraction(self, sizer: PositionSizer) -> None:
         result = sizer.fixed_fraction_size(nav=NAV, price=PRICE)
@@ -71,6 +74,7 @@ class TestFixedFraction:
 # ------------------------------------------------------------------
 # optimal_f
 # ------------------------------------------------------------------
+
 
 class TestOptimalF:
     def test_empty_trades_falls_back_to_fixed_fraction(self, sizer: PositionSizer) -> None:

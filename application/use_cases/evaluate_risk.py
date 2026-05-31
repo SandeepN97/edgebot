@@ -56,9 +56,7 @@ class EvaluateRisk:
             )
             return RiskVerdict(
                 approved=False,
-                reasons=[
-                    f"Circuit breaker tripped: {self._circuit_breaker.trip_reason}"
-                ],
+                reasons=[f"Circuit breaker tripped: {self._circuit_breaker.trip_reason}"],
             )
 
         verdict = self._risk_engine.evaluate(

@@ -8,10 +8,7 @@ layer (e.g. the SQLite adapter writing a `circuit_breaker_state` record).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
-
-_UTC = timezone.utc
-from typing import List
+from datetime import UTC, date, datetime
 
 
 @dataclass
@@ -20,7 +17,7 @@ class DailyLossRecord:
 
     trade_date: date
     realised_loss: float  # positive = money lost
-    timestamp: datetime = field(default_factory=lambda: datetime.now(_UTC))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class CircuitBreaker:
@@ -45,7 +42,7 @@ class CircuitBreaker:
         self._trip_reason: str = ""
         self._current_date: date = date.today()
         self._daily_loss: float = 0.0
-        self._loss_log: List[DailyLossRecord] = []
+        self._loss_log: list[DailyLossRecord] = []
 
     @property
     def is_tripped(self) -> bool:
@@ -83,9 +80,7 @@ class CircuitBreaker:
                 self._roll_day(today)
 
         self._daily_loss += loss
-        self._loss_log.append(
-            DailyLossRecord(trade_date=self._current_date, realised_loss=loss)
-        )
+        self._loss_log.append(DailyLossRecord(trade_date=self._current_date, realised_loss=loss))
 
         if nav > 0 and self._daily_loss / nav >= self.daily_loss_limit_pct:
             self._trip(nav)

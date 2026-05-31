@@ -8,11 +8,8 @@ OrderStatus updates.  This file contains zero infrastructure imports.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-
-_UTC = timezone.utc
+from datetime import UTC, datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID, uuid4
 
 
@@ -29,9 +26,9 @@ class OrderType(Enum):
 class OrderStatus(Enum):
     """Lifecycle state of an order."""
 
-    PENDING = "pending"       # created locally, not yet sent
-    SUBMITTED = "submitted"   # sent to exchange, awaiting ack
-    OPEN = "open"             # acknowledged, resting on the book
+    PENDING = "pending"  # created locally, not yet sent
+    SUBMITTED = "submitted"  # sent to exchange, awaiting ack
+    OPEN = "open"  # acknowledged, resting on the book
     PARTIALLY_FILLED = "partially_filled"
     FILLED = "filled"
     CANCELLED = "cancelled"
@@ -71,17 +68,17 @@ class Order:
     side: OrderSide
     order_type: OrderType
     quantity: float
-    signal_id: Optional[UUID] = None
-    price: Optional[float] = None
-    stop_price: Optional[float] = None
+    signal_id: UUID | None = None
+    price: float | None = None
+    stop_price: float | None = None
     status: OrderStatus = OrderStatus.PENDING
     order_id: UUID = field(default_factory=uuid4)
-    exchange_id: Optional[str] = None
+    exchange_id: str | None = None
     filled_qty: float = 0.0
-    avg_fill_price: Optional[float] = None
+    avg_fill_price: float | None = None
     fee: float = 0.0
-    created_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
-    updated_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
     def fill(self, qty: float, price: float, fee: float = 0.0) -> None:
         """Record a (partial) fill event."""
@@ -91,7 +88,7 @@ class Order:
         self.filled_qty += qty
         self.avg_fill_price = total_cost / self.filled_qty
         self.fee += fee
-        self.updated_at = datetime.now(_UTC)
+        self.updated_at = datetime.now(UTC)
         if self.filled_qty >= self.quantity:
             self.status = OrderStatus.FILLED
         else:
@@ -100,12 +97,12 @@ class Order:
     def cancel(self) -> None:
         """Transition to cancelled state."""
         self.status = OrderStatus.CANCELLED
-        self.updated_at = datetime.now(_UTC)
+        self.updated_at = datetime.now(UTC)
 
     def reject(self) -> None:
         """Transition to rejected state."""
         self.status = OrderStatus.REJECTED
-        self.updated_at = datetime.now(_UTC)
+        self.updated_at = datetime.now(UTC)
 
     @property
     def is_terminal(self) -> bool:

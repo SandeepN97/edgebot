@@ -16,11 +16,9 @@ Hard-coded constants (can be overridden via constructor for testing):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List
 
-from domain.entities.signal import Signal
 from domain.entities.position import Position
-
+from domain.entities.signal import Signal
 
 MAX_POSITION_SIZE_PCT: float = 0.02
 DAILY_LOSS_LIMIT_PCT: float = 0.05
@@ -40,7 +38,7 @@ class RiskVerdict:
     """
 
     approved: bool
-    reasons: List[str]
+    reasons: list[str]
     adjusted_qty: float | None = None
 
 
@@ -70,7 +68,7 @@ class RiskEngine:
         signal: Signal,
         nav: float,
         daily_loss: float,
-        open_positions: List[Position],
+        open_positions: list[Position],
     ) -> RiskVerdict:
         """Run all risk checks and return a RiskVerdict.
 
@@ -83,7 +81,7 @@ class RiskEngine:
         Returns:
             RiskVerdict with approved=True only when every check passes.
         """
-        violations: List[str] = []
+        violations: list[str] = []
 
         # 1. Daily loss circuit-breaker
         violations += self._check_daily_loss(daily_loss, nav)
@@ -108,43 +106,35 @@ class RiskEngine:
     # Private check helpers — each returns a list of violation strings
     # ------------------------------------------------------------------
 
-    def _check_daily_loss(self, daily_loss: float, nav: float) -> List[str]:
+    def _check_daily_loss(self, daily_loss: float, nav: float) -> list[str]:
         if nav <= 0:
             return ["NAV must be positive"]
         if daily_loss / nav >= self.daily_loss_limit_pct:
             return [
-                f"Daily loss limit breached: {daily_loss/nav:.2%} >= "
+                f"Daily loss limit breached: {daily_loss / nav:.2%} >= "
                 f"{self.daily_loss_limit_pct:.2%} of NAV"
             ]
         return []
 
-    def _check_open_positions(self, open_positions: List[Position]) -> List[str]:
+    def _check_open_positions(self, open_positions: list[Position]) -> list[str]:
         if len(open_positions) >= self.max_open_positions:
             return [
-                f"Max open positions reached: {len(open_positions)} / "
-                f"{self.max_open_positions}"
+                f"Max open positions reached: {len(open_positions)} / {self.max_open_positions}"
             ]
         return []
 
-    def _check_risk_reward(self, signal: Signal) -> List[str]:
+    def _check_risk_reward(self, signal: Signal) -> list[str]:
         rr = signal.risk_reward_ratio
         if rr is None:
             return ["Cannot compute R:R without entry_price on signal"]
         if rr < self.min_risk_reward_ratio:
-            return [
-                f"R:R {rr:.2f} < minimum {self.min_risk_reward_ratio:.2f}"
-            ]
+            return [f"R:R {rr:.2f} < minimum {self.min_risk_reward_ratio:.2f}"]
         return []
 
-    def _check_duplicate(
-        self, signal: Signal, open_positions: List[Position]
-    ) -> List[str]:
+    def _check_duplicate(self, signal: Signal, open_positions: list[Position]) -> list[str]:
         for pos in open_positions:
             if pos.symbol == signal.symbol and pos.direction == signal.direction:
-                return [
-                    f"Duplicate position: already {signal.direction.value} "
-                    f"{signal.symbol}"
-                ]
+                return [f"Duplicate position: already {signal.direction.value} {signal.symbol}"]
         return []
 
     def _compute_qty(self, signal: Signal, nav: float) -> float:

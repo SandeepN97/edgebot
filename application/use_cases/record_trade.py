@@ -8,18 +8,16 @@ pushes metrics, and optionally triggers the CircuitBreaker if the trade was a lo
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-
-_UTC = timezone.utc
+from datetime import UTC, datetime
 from typing import Protocol
 
+from application.ports.output.i_metrics_port import IMetricsPort
+from application.ports.output.i_notify_port import INotifyPort
 from domain.entities.order import Order
 from domain.entities.position import Position
 from domain.entities.trade import Trade
 from domain.portfolio.portfolio_state import PortfolioState
 from domain.risk.circuit_breaker import CircuitBreaker
-from application.ports.output.i_notify_port import INotifyPort
-from application.ports.output.i_metrics_port import IMetricsPort
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +84,7 @@ class RecordTrade:
             entry_reason=entry_reason,
             exit_reason=exit_reason,
             entry_at=position.opened_at,
-            exit_at=datetime.now(_UTC),
+            exit_at=datetime.now(UTC),
             entry_fee=0.0,
             exit_fee=exit_order.fee,
         )

@@ -7,6 +7,7 @@ These tests prove that a looser env value is silently clamped to the constant.
 from __future__ import annotations
 
 import os
+
 import pytest
 
 from domain.risk.risk_engine import (
@@ -20,6 +21,7 @@ from domain.risk.risk_engine import (
 def _make_config(**env_overrides):
     """Build an AppConfig with the given env vars patched in."""
     from infrastructure.config.container import AppConfig
+
     old = {}
     for k, v in env_overrides.items():
         old[k] = os.environ.get(k)
@@ -37,6 +39,7 @@ def _make_config(**env_overrides):
 # ------------------------------------------------------------------
 # daily_loss_limit_pct — smaller = tighter; looser env must be clamped
 # ------------------------------------------------------------------
+
 
 class TestDailyLossLimitClamping:
     def test_looser_env_is_clamped_to_constant(self) -> None:
@@ -57,6 +60,7 @@ class TestDailyLossLimitClamping:
 # max_position_size_pct — smaller = tighter
 # ------------------------------------------------------------------
 
+
 class TestMaxPositionSizeClamping:
     def test_looser_env_is_clamped(self) -> None:
         cfg = _make_config(MAX_POSITION_SIZE_PCT=0.99)
@@ -72,6 +76,7 @@ class TestMaxPositionSizeClamping:
 # max_open_positions — smaller = tighter
 # ------------------------------------------------------------------
 
+
 class TestMaxOpenPositionsClamping:
     def test_looser_env_is_clamped(self) -> None:
         cfg = _make_config(MAX_OPEN_POSITIONS=100)
@@ -85,6 +90,7 @@ class TestMaxOpenPositionsClamping:
 # ------------------------------------------------------------------
 # min_risk_reward_ratio — larger = tighter
 # ------------------------------------------------------------------
+
 
 class TestMinRiskRewardClamping:
     def test_looser_env_is_clamped(self) -> None:
