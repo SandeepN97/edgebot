@@ -56,8 +56,20 @@ def main() -> None:
     if raw.empty:
         logger.error("No data returned for %s", args.symbol)
         sys.exit(1)
+
+    # yfinance >= 0.2 returns a MultiIndex (Price, Ticker) — flatten to simple names
+    if isinstance(raw.columns, pd.MultiIndex):
+        raw.columns = [col[0].lower() for col in raw.columns]
+    else:
+        raw.columns = [c.lower() for c in raw.columns]
+
+    # Backtrader PandasData expects these exact column names
+    raw.rename(columns={"adj close": "close"}, inplace=True, errors="ignore")
     raw.index = pd.to_datetime(raw.index)
-    logger.info("Downloaded %d bars", len(raw))
+    # Strip timezone so Backtrader doesn't choke on tz-aware index
+    if raw.index.tz is not None:
+        raw.index = raw.index.tz_localize(None)
+    logger.info("Downloaded %d bars (columns: %s)", len(raw), list(raw.columns))
 
     # ------------------------------------------------------------------
     # Backtrader strategy
