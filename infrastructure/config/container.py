@@ -53,18 +53,31 @@ class AppConfig:
     # Database
     db_path: str = field(default_factory=lambda: os.getenv("DB_PATH", "data/edgebot.db"))
 
-    # Risk overrides (fall back to domain constants)
+    # Risk overrides — env may only TIGHTEN limits, never loosen them.
+    # Smaller value = tighter for size/loss/positions; larger = tighter for RR.
     max_position_size_pct: float = field(
-        default_factory=lambda: float(os.getenv("MAX_POSITION_SIZE_PCT", str(MAX_POSITION_SIZE_PCT)))
+        default_factory=lambda: min(
+            float(os.getenv("MAX_POSITION_SIZE_PCT", str(MAX_POSITION_SIZE_PCT))),
+            MAX_POSITION_SIZE_PCT,
+        )
     )
     daily_loss_limit_pct: float = field(
-        default_factory=lambda: float(os.getenv("DAILY_LOSS_LIMIT_PCT", str(DAILY_LOSS_LIMIT_PCT)))
+        default_factory=lambda: min(
+            float(os.getenv("DAILY_LOSS_LIMIT_PCT", str(DAILY_LOSS_LIMIT_PCT))),
+            DAILY_LOSS_LIMIT_PCT,
+        )
     )
     max_open_positions: int = field(
-        default_factory=lambda: int(os.getenv("MAX_OPEN_POSITIONS", str(MAX_OPEN_POSITIONS)))
+        default_factory=lambda: min(
+            int(os.getenv("MAX_OPEN_POSITIONS", str(MAX_OPEN_POSITIONS))),
+            MAX_OPEN_POSITIONS,
+        )
     )
     min_risk_reward_ratio: float = field(
-        default_factory=lambda: float(os.getenv("MIN_RISK_REWARD_RATIO", str(MIN_RISK_REWARD_RATIO)))
+        default_factory=lambda: max(
+            float(os.getenv("MIN_RISK_REWARD_RATIO", str(MIN_RISK_REWARD_RATIO))),
+            MIN_RISK_REWARD_RATIO,
+        )
     )
 
     # Execution

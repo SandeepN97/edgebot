@@ -69,8 +69,24 @@ class Position:
 
     @property
     def notional_value(self) -> float:
-        """Current market value of the position."""
+        """Current market value of the position (always positive; direction-agnostic)."""
         return self.current_price * self.quantity
+
+    @property
+    def nav_contribution(self) -> float:
+        """Direction-aware capital contribution to portfolio NAV.
+
+        Equals the margin posted at entry (entry_price × qty) plus unrealized PnL.
+        For longs this equals notional_value; for shorts it moves inversely with
+        the market price, correctly reducing NAV when the price rises against a
+        short position.
+
+        Formula: entry_price × qty + unrealized_pnl
+          LONG  @100, current=120 → 100 + 20  = 120  (same as notional_value)
+          SHORT @100, current=80  → 100 + 20  = 120  (short profit)
+          SHORT @100, current=120 → 100 + (−20) = 80  (short loss)
+        """
+        return self.entry_price * self.quantity + self.unrealized_pnl
 
     @property
     def is_stopped_out(self) -> bool:

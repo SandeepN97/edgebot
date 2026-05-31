@@ -58,13 +58,15 @@ class TelegramAdapter(INotifyPort):
 
     async def send_signal_alert(self, signal: Signal) -> None:
         direction_arrow = "📈" if signal.direction.value == "long" else "📉"
+        rr = signal.risk_reward_ratio
+        rr_str = f"{rr:.2f}" if rr is not None else "N/A"
         message = (
             f"{direction_arrow} *Signal: {signal.symbol}*\n"
             f"Direction: `{signal.direction.value.upper()}`\n"
             f"Confidence: `{signal.confidence:.0%}`\n"
             f"Entry: `{signal.entry_price or 'MARKET'}`\n"
             f"SL: `{signal.stop_loss}` | TP: `{signal.take_profit}`\n"
-            f"R:R: `{signal.risk_reward_ratio:.2f if signal.risk_reward_ratio else 'N/A'}`\n"
+            f"R:R: `{rr_str}`\n"
             f"Reason: _{signal.reason}_\n"
             f"Strategy: `{signal.strategy_id}`"
         )

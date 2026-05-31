@@ -64,12 +64,17 @@ class PortfolioState:
 
     @property
     def open_positions_notional(self) -> float:
+        """Raw market notional of all open positions (direction-agnostic)."""
         return sum(p.notional_value for p in self._positions.values())
 
     @property
     def nav(self) -> float:
-        """Net asset value = cash + mark-to-market value of all open positions."""
-        return self._cash + self.open_positions_notional
+        """Net asset value = cash + direction-aware NAV contribution of open positions.
+
+        Uses Position.nav_contribution (margin + unrealized PnL) so that SHORT
+        positions correctly reduce NAV when prices move against them.
+        """
+        return self._cash + sum(p.nav_contribution for p in self._positions.values())
 
     @property
     def total_return_pct(self) -> float:
@@ -81,24 +86,35 @@ class PortfolioState:
     # ------------------------------------------------------------------
 
     def add_position(self, position: Position) -> None:
-        """Register a newly opened position and debit cash."""
-        cost = position.entry_price * position.quantity
-        if cost > self._cash:
+        """Register a newly opened position and debit entry margin from cash.
+
+        For both LONG and SHORT we deduct entry_price × quantity as the margin
+        posted.  This is the capital at risk; it is returned (± PnL) on close.
+        """
+        margin = position.entry_price * position.quantity
+        if margin > self._cash:
             raise ValueError(
-                f"Insufficient cash: need {cost:.2f}, have {self._cash:.2f}"
+                f"Insufficient cash: need {margin:.2f}, have {self._cash:.2f}"
             )
         self._positions[position.position_id] = position
-        self._cash -= cost
+        self._cash -= margin
         self._touch()
 
     def close_position(self, position_id: UUID, exit_price: float) -> float:
-        """Remove a position and credit cash at exit_price. Returns realised PnL."""
+        """Remove a position, credit margin + PnL to cash, and return realised PnL.
+
+        Works correctly for both LONG and SHORT positions:
+          credit = entry_price × qty + unrealized_pnl
+          LONG  exit above entry → credit > margin  (profit)
+          SHORT exit below entry → credit > margin  (profit)
+          SHORT exit above entry → credit < margin  (loss)
+        """
         pos = self._positions.pop(position_id, None)
         if pos is None:
             raise KeyError(f"Position {position_id} not found")
-        proceeds = exit_price * pos.quantity
-        self._cash += proceeds
-        realised_pnl = pos.unrealized_pnl  # already updated to exit_price
+        pos.update_price(exit_price)
+        realised_pnl = pos.unrealized_pnl
+        self._cash += pos.entry_price * pos.quantity + realised_pnl
         self._touch()
         return realised_pnl
 

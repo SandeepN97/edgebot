@@ -7,7 +7,6 @@ the result to the risk engine for final capping.
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
@@ -132,23 +131,43 @@ class PositionSizer:
     def optimal_f(
         self, trades: list[float], nav: float, price: float
     ) -> SizingResult:
-        """Approximate Optimal-f via grid search over historical trade returns.
+        """Approximate Optimal-f (Vince) via grid search over historical trade PnLs.
 
-        trades: list of net PnL values per trade (positive = win, negative = loss).
+        The HPR for each trade is: 1 + f * pnl / worst_loss
+        where worst_loss is the largest single loss (positive magnitude).
+        TWR = product of all HPRs; we maximise TWR over f in (0, max_fraction].
+
+        Falls back to fixed_fraction when there are no historical losses (no
+        worst_loss anchor means the formula is undefined).
+
+        Args:
+            trades: Net PnL per trade (positive = profit, negative = loss).
+            nav:    Current net asset value.
+            price:  Entry price for quantity calculation.
         """
         if not trades:
             return self.fixed_fraction_size(nav, price)
-        best_f, best_twr = 0.0, 0.0
+
+        losses = [p for p in trades if p < 0]
+        if not losses:
+            # No loss history → can't anchor the HPR formula; fall back safely.
+            return self.fixed_fraction_size(nav, price)
+
+        worst_loss = max(abs(p) for p in losses)
+
+        # Baseline: f=0 means no trade, TWR=1.0.  Any f that beats 1.0 is worth taking.
+        best_f, best_twr = 0.0, 1.0
         for f_candidate in (i / 100 for i in range(1, 51)):
             twr = 1.0
             for pnl in trades:
-                factor = 1 + f_candidate * pnl / max(abs(p) for p in trades if p < 0 or True)
+                factor = 1.0 + f_candidate * pnl / worst_loss
                 if factor <= 0:
                     twr = 0.0
                     break
                 twr *= factor
             if twr > best_twr:
                 best_twr, best_f = twr, f_candidate
+
         best_f = min(best_f, self.max_fraction)
         notional = nav * best_f
         quantity = notional / price if price > 0 else 0.0
