@@ -8,7 +8,9 @@ routes them through the risk engine before any order is placed.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+
+_UTC = timezone.utc
 from enum import Enum
 from typing import Optional
 
@@ -58,7 +60,7 @@ class Signal:
     strategy_id: str
     reason: str
     entry_price: Optional[float] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(_UTC))
     timeframe: str = "4h"
     metadata: dict = field(default_factory=dict)
 

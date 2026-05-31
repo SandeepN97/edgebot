@@ -8,7 +8,9 @@ layer (e.g. the SQLite adapter writing a `circuit_breaker_state` record).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+
+_UTC = timezone.utc
 from typing import List
 
 
@@ -18,7 +20,7 @@ class DailyLossRecord:
 
     trade_date: date
     realised_loss: float  # positive = money lost
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=lambda: datetime.now(_UTC))
 
 
 class CircuitBreaker:

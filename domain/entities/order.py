@@ -8,7 +8,9 @@ OrderStatus updates.  This file contains zero infrastructure imports.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+
+_UTC = timezone.utc
 from enum import Enum
 from typing import Optional
 from uuid import UUID, uuid4
@@ -78,8 +80,8 @@ class Order:
     filled_qty: float = 0.0
     avg_fill_price: Optional[float] = None
     fee: float = 0.0
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    created_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
+    updated_at: datetime = field(default_factory=lambda: datetime.now(_UTC))
 
     def fill(self, qty: float, price: float, fee: float = 0.0) -> None:
         """Record a (partial) fill event."""
@@ -89,7 +91,7 @@ class Order:
         self.filled_qty += qty
         self.avg_fill_price = total_cost / self.filled_qty
         self.fee += fee
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(_UTC)
         if self.filled_qty >= self.quantity:
             self.status = OrderStatus.FILLED
         else:
@@ -98,12 +100,12 @@ class Order:
     def cancel(self) -> None:
         """Transition to cancelled state."""
         self.status = OrderStatus.CANCELLED
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(_UTC)
 
     def reject(self) -> None:
         """Transition to rejected state."""
         self.status = OrderStatus.REJECTED
-        self.updated_at = datetime.utcnow()
+        self.updated_at = datetime.now(_UTC)
 
     @property
     def is_terminal(self) -> bool:

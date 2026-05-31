@@ -8,7 +8,9 @@ pushes metrics, and optionally triggers the CircuitBreaker if the trade was a lo
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+
+_UTC = timezone.utc
 from typing import Protocol
 
 from domain.entities.order import Order
@@ -84,7 +86,7 @@ class RecordTrade:
             entry_reason=entry_reason,
             exit_reason=exit_reason,
             entry_at=position.opened_at,
-            exit_at=datetime.utcnow(),
+            exit_at=datetime.now(_UTC),
             entry_fee=0.0,
             exit_fee=exit_order.fee,
         )

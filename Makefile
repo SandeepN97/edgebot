@@ -2,8 +2,8 @@
 # Targets: install, test, backtest, paper, live, lint
 
 PYTHON   := python3
-PIP      := pip
-PYTEST   := pytest
+PIP      := pip3
+PYTEST   := python3 -m pytest
 RUFF     := ruff
 MYPY     := mypy
 DOCKER   := docker compose

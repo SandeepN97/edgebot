@@ -9,7 +9,9 @@ after each trade.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
+
+_UTC = timezone.utc
 from typing import Dict, List, Optional
 from uuid import UUID
 
@@ -30,8 +32,8 @@ class PortfolioState:
         self._cash: float = initial_cash
         self._initial_cash: float = initial_cash
         self._positions: Dict[UUID, Position] = {}
-        self._created_at: datetime = datetime.utcnow()
-        self._updated_at: datetime = datetime.utcnow()
+        self._created_at: datetime = datetime.now(_UTC)
+        self._updated_at: datetime = datetime.now(_UTC)
 
     # ------------------------------------------------------------------
     # Properties
@@ -140,4 +142,4 @@ class PortfolioState:
         }
 
     def _touch(self) -> None:
-        self._updated_at = datetime.utcnow()
+        self._updated_at = datetime.now(_UTC)
