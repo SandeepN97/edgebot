@@ -74,3 +74,10 @@ docker-compose.override.yml
 backtest_results/
 user_data/
 freqtrade_user_data/
+
+# backtesting/data/ package: track source files, ignore downloaded data
+!backtesting/data/
+!backtesting/data/__init__.py
+!backtesting/data/downloader.py
+backtesting/data/raw/
+backtesting/data/features/

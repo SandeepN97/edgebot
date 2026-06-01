@@ -8,7 +8,8 @@ ccxt[async]>=4.3.0            # ccxt async/pro WebSocket support
 
 # ── Backtesting ─────────────────────────────────────────────────────────────
 backtrader>=1.9.78.123         # Backtesting engine
-yfinance>=0.2.38               # Historical OHLCV data download
+yfinance>=0.2.38               # Historical OHLCV data download (legacy run_backtest.py)
+pyarrow>=14.0.0                # Parquet read/write for OHLCV cache
 
 # ── Data Science & ML ───────────────────────────────────────────────────────
 pandas>=2.2.0                  # DataFrame operations for strategy logic
