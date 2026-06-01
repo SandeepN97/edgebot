@@ -1,12 +1,11 @@
 # EdgeBot — Backtest Findings (Phase 1, Step 2)
 
-Honest record of the strategy validation phase. The backtest gate did not pass.
-No strategy reached a tradeable edge. This document captures what was tested,
-the evidence, the diagnosis, and why the edge-hunt was stopped — so the
-conclusion rests on facts, not memory.
+Honest record of the strategy validation phase. This document captures what was
+tested, the evidence, the diagnoses, and the final out-of-sample verdict — so
+the conclusion rests on facts, not memory.
 
-**Status:** Step 2 (backtest) active. Seven rounds completed; gate not yet cleared.
-Sealed 2022-2024 holdout intact and untouched.
+**Status:** Validated candidate edge found (relative-strength rotation);
+advancing to paper trading. Sealed 2022-2024 holdout spent — result final.
 
 Validation discipline used throughout: train/test holdout split, one parameter
 change per round, stopping rules set before reading results, sealed holdout never
@@ -238,15 +237,75 @@ exercise. If the decision is made to unseal:
 
 ## The Real Deliverable
 
-The product of this phase is not a profitable strategy — it is a validated,
-honest finding: simple technical-analysis strategies did not show a tradeable
-edge on these markets, demonstrated rigorously and without self-deception, at
-zero financial cost.
+Simple technical-analysis strategies did not show a tradeable edge on these
+markets. That finding was demonstrated rigorously and without self-deception,
+at zero financial cost. The knowledge of *why* — the filter squeeze, the
+ADX×volume mutual exclusivity, mean-reversion's structural failure in trending
+bear markets — informs every future design decision.
 
-The knowledge of *why* — the filter squeeze, the ADX×volume mutual exclusivity,
-mean-reversion's structural failure in trending bear markets — is more valuable
-than a strategy that happened to look good on past data, because it informs
-every future design decision.
+The relative-strength rotation strategy passed the one-shot out-of-sample test.
+The factory is built, and a product worth testing at the next stage has been found.
 
-The factory is built. No product worth manufacturing was found yet.
-That is a pause, not a failure.
+---
+
+## Round 7 (cont.) — HOLDOUT VERDICT: VALIDATED EDGE
+
+### The Run
+
+One-shot execution of the sealed 2022-2024 holdout. Strategy spec unchanged
+from the tune-window run: 10-coin universe, 90-day risk-adjusted momentum,
+top-2 equal weight, weekly rebalance, cash filter ON, 0.1% commission.
+No parameter changes before, during, or after. The holdout is spent — this
+result is final regardless of outcome.
+
+### Results (holdout: 2022-2024, out-of-sample)
+
+|  | Rotation | BTC buy-and-hold | EW hold-all |
+|--|---------|-----------------|-------------|
+| Total return | **+161.7%** | +95.9% | +2.6% |
+| Final value | **$261.73** | $195.86 | $102.61 |
+| Sharpe | **+0.686** | +0.569 | +0.279 |
+| Max drawdown | **60.2%** | 66.9% | 75.0% |
+
+Simulation stats: 220 rebalances, 275 trades, 5 cash periods.
+
+All three verdict gates cleared:
+
+| Gate | Result |
+|------|--------|
+| Beats BTC buy-and-hold (total return) | ✓  +161.7% vs +95.9% |
+| Beats EW hold-all (total return) | ✓  +161.7% vs +2.6% |
+| Sharpe ≥ 0.5 | ✓  +0.686 |
+
+### Why the thesis held
+
+Equal-weight-hold-all nearly broke even (+2.6%) across 2022-2024 — holding
+every coin through a period where the whole basket was crushed in 2022 means
+holding everything down. The rotation's cash filter (5 of 220 periods in cash)
+and momentum tilt away from laggards preserved enough capital through the bear
+leg to compound aggressively through the 2023-2024 recovery. This is exactly
+the structural benefit the cash filter was designed to provide; it earned its
+cost on the first real test.
+
+The bench-level numbers confirm directionality: rotation's max drawdown (60.2%)
+was lower than both BTC B&H (66.9%) and EW hold-all (75.0%) — smaller loss in
+the crash, larger compounded gain in the recovery.
+
+### Honest caveats (recorded so future decisions stay grounded)
+
+1. **One out-of-sample pass is strong evidence, not proof.** The edge leaned
+   heavily on protecting capital through ONE bear market (2022). That is a
+   sample of one downturn type. A sideways chop regime or a different bear
+   structure (e.g. sector rotation rather than broad crash) may behave
+   differently.
+
+2. **60% max drawdown is severe.** Emotionally and practically hard to hold at
+   real size. Live behavior under real capital pressure has not been tested.
+
+3. **The holdout is spent.** No clean out-of-sample data remains for any future
+   changes to the strategy. Any parameter or logic change from this point
+   forward is unvalidated by construction.
+
+4. **Next step is paper trading, not capital deployment.** Live execution —
+   slippage, exchange latency, real order fill — has not been tested. Paper
+   trading confirms live behavior before any real-money decision.
