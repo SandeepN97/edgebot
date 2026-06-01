@@ -66,6 +66,8 @@ def _make_strategy_class() -> type:
             atr_period=14,
             atr_sl_mult=1.5,
             atr_tp_mult=3.0,
+            adx_period=14,
+            adx_min=20.0,       # skip entries when trend strength is too weak
             risk_pct=0.02,
             features_df=None,   # passed at cerebro.addstrategy() time
         )
@@ -75,6 +77,7 @@ def _make_strategy_class() -> type:
             self.ema_slow = bt.ind.EMA(period=self.p.ema_slow)
             self.rsi = bt.ind.RSI(period=self.p.rsi_period, safediv=True)
             self.atr = bt.ind.ATR(period=self.p.atr_period)
+            self.adx = bt.ind.AverageDirectionalMovementIndex(period=self.p.adx_period)
             self.vol_ma = bt.ind.SMA(self.data.volume, period=self.p.vol_period)
             self.crossover = bt.ind.CrossOver(self.ema_fast, self.ema_slow)
             self.order: bt.Order | None = None
@@ -138,8 +141,9 @@ def _make_strategy_class() -> type:
             vol_ok = self.vol_ma[0] > 0 and (
                 self.data.volume[0] > self.vol_ma[0] * self.p.vol_mult
             )
+            adx_ok = self.adx[0] >= self.p.adx_min
             atr = self.atr[0]
-            if atr <= 0 or not (rsi_ok and vol_ok):
+            if atr <= 0 or not (rsi_ok and vol_ok and adx_ok):
                 return
 
             bar_idx = len(self.data) - 1
@@ -165,7 +169,7 @@ def _make_strategy_class() -> type:
                     "direction": "LONG",
                     "reason": (
                         f"EMA{self.p.ema_fast} crossed EMA{self.p.ema_slow}; "
-                        f"RSI={self.rsi[0]:.1f}; vol_ratio={vol_ratio:.2f}"
+                        f"RSI={self.rsi[0]:.1f}; ADX={self.adx[0]:.1f}; vol_ratio={vol_ratio:.2f}"
                     ),
                     "regime": self._regime_at(bar_idx),
                 }
