@@ -28,6 +28,11 @@ TRAIN_END = "2024-01-01"   # exclusive upper bound
 TEST_START = "2024-01-01"
 TEST_END = "2025-01-01"    # exclusive upper bound
 
+# Tune-only window (2021-2022): used for iterative parameter search.
+# 2023 and 2024 are the sealed holdout — never run until final verdict.
+TUNE_START = "2021-01-01"
+TUNE_END = "2023-01-01"    # exclusive: 2021 + 2022 only
+
 STARTING_CASH = 100.0
 COMMISSION = 0.001         # 0.1 % Binance taker
 BARS_PER_YEAR = 2190       # 365 × 6  (24/7 crypto, 4h bars)
@@ -64,7 +69,7 @@ def _make_strategy_class() -> type:
             vol_period=20,
             vol_mult=1.2,
             atr_period=14,
-            atr_sl_mult=1.5,
+            atr_sl_mult=2.0,
             atr_tp_mult=3.0,
             adx_period=14,
             adx_min=20.0,       # skip entries when trend strength is too weak
@@ -312,6 +317,28 @@ def run_backtest_all() -> dict[str, tuple[PeriodResult, PeriodResult]]:
     for symbol in SYMBOLS:
         try:
             results[symbol] = run_backtest_symbol(symbol)
+        except FileNotFoundError as exc:
+            logger.error("%s", exc)
+    return results
+
+
+def run_tune_symbol(symbol: str) -> PeriodResult:
+    """Run only the 2021-2022 tune window. 2023-2024 remain sealed."""
+    filename = symbol.replace("/", "_")
+    feat_path = FEAT_DIR / f"{filename}_4h.parquet"
+    if not feat_path.exists():
+        raise FileNotFoundError(f"Features not found: {feat_path} — run feature pipeline first")
+
+    features = pd.read_parquet(feat_path)
+    return _run_period(features, symbol, "TUNE 2021-2022", TUNE_START, TUNE_END)
+
+
+def run_tune_all() -> dict[str, PeriodResult]:
+    """Run all symbols on the tune window only. Does not touch the holdout."""
+    results: dict[str, PeriodResult] = {}
+    for symbol in SYMBOLS:
+        try:
+            results[symbol] = run_tune_symbol(symbol)
         except FileNotFoundError as exc:
             logger.error("%s", exc)
     return results

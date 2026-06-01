@@ -4,6 +4,7 @@ Signal conditions (all must be true):
   • EMA9 crosses above EMA21  → LONG signal
   • EMA9 crosses below EMA21 → SHORT signal
   • RSI(14) is in [40, 70] (avoids entering in extreme overbought/oversold)
+  • ADX(14) ≥ 20 (no entry when trend strength is too weak — NEUTRAL/RANGING bars)
   • Volume of the signal bar > 1.2× the 20-bar average volume
 
 A reason string is always attached to every emitted Signal.
@@ -33,8 +34,10 @@ _RSI_HIGH = 70.0
 _VOLUME_MA_PERIOD = 20
 _VOLUME_MULTIPLIER = 1.2
 _ATR_PERIOD = 14
-_ATR_SL_MULTIPLIER = 1.5  # stop-loss = entry ± ATR × 1.5
+_ATR_SL_MULTIPLIER = 2.0  # stop-loss = entry ± ATR × 2.0
 _ATR_TP_MULTIPLIER = 3.0  # take-profit = entry ± ATR × 3.0
+_ADX_PERIOD = 14
+_ADX_MIN = 20.0           # skip entry when ADX < 20 (NEUTRAL/RANGING bars)
 
 
 class EmaCrossoverStrategy(ISignalPort):
@@ -98,10 +101,13 @@ class EmaCrossoverStrategy(ISignalPort):
             return []
 
         closes = list(self._closes)
+        highs = list(self._highs)
+        lows = list(self._lows)
         ema_fast = _ema(closes, _EMA_FAST)
         ema_slow = _ema(closes, _EMA_SLOW)
         rsi = _rsi(closes, _RSI_PERIOD)
-        atr = _atr(list(self._highs), list(self._lows), closes, _ATR_PERIOD)
+        atr = _atr(highs, lows, closes, _ATR_PERIOD)
+        adx = _adx(highs, lows, closes, _ADX_PERIOD)
         avg_volume = sum(list(self._volumes)[-_VOLUME_MA_PERIOD:]) / _VOLUME_MA_PERIOD
         current_volume = snapshot.volume
 
@@ -112,25 +118,28 @@ class EmaCrossoverStrategy(ISignalPort):
             bear_cross = self._prev_ema_fast >= self._prev_ema_slow and ema_fast < ema_slow
             volume_ok = current_volume > avg_volume * _VOLUME_MULTIPLIER
             rsi_ok = _RSI_LOW <= rsi <= _RSI_HIGH
+            adx_ok = adx >= _ADX_MIN
 
-            if bull_cross and volume_ok and rsi_ok:
+            if bull_cross and volume_ok and rsi_ok and adx_ok:
                 entry = snapshot.close
                 sl = entry - atr * _ATR_SL_MULTIPLIER
                 tp = entry + atr * _ATR_TP_MULTIPLIER
                 reason = (
                     f"EMA{_EMA_FAST} crossed above EMA{_EMA_SLOW}; "
                     f"RSI={rsi:.1f} in [{_RSI_LOW},{_RSI_HIGH}]; "
+                    f"ADX={adx:.1f}≥{_ADX_MIN}; "
                     f"vol={current_volume:.0f} > {_VOLUME_MULTIPLIER}×avg"
                 )
                 signal = self._make_signal(Direction.LONG, entry, sl, tp, rsi, reason)
 
-            elif bear_cross and volume_ok and rsi_ok:
+            elif bear_cross and volume_ok and rsi_ok and adx_ok:
                 entry = snapshot.close
                 sl = entry + atr * _ATR_SL_MULTIPLIER
                 tp = entry - atr * _ATR_TP_MULTIPLIER
                 reason = (
                     f"EMA{_EMA_FAST} crossed below EMA{_EMA_SLOW}; "
                     f"RSI={rsi:.1f} in [{_RSI_LOW},{_RSI_HIGH}]; "
+                    f"ADX={adx:.1f}≥{_ADX_MIN}; "
                     f"vol={current_volume:.0f} > {_VOLUME_MULTIPLIER}×avg"
                 )
                 signal = self._make_signal(Direction.SHORT, entry, sl, tp, rsi, reason)
@@ -224,3 +233,61 @@ def _atr(highs: list[float], lows: list[float], closes: list[float], period: int
         )
         true_ranges.append(tr)
     return sum(true_ranges[-period:]) / min(len(true_ranges), period)
+
+
+def _adx(highs: list[float], lows: list[float], closes: list[float], period: int = 14) -> float:
+    """Average Directional Index using Wilder smoothing.
+
+    Requires at least 2×period+1 bars; returns 0.0 (→ no entry) if data is
+    insufficient so the strategy safely skips the first warmup candles.
+    """
+    n = len(highs)
+    if n < period * 2 + 1:
+        return 0.0
+
+    trs: list[float] = []
+    pdms: list[float] = []
+    mdms: list[float] = []
+    for i in range(1, n):
+        tr = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]),
+        )
+        up = highs[i] - highs[i - 1]
+        dn = lows[i - 1] - lows[i]
+        trs.append(tr)
+        pdms.append(up if up > dn and up > 0 else 0.0)
+        mdms.append(dn if dn > up and dn > 0 else 0.0)
+
+    if len(trs) < period:
+        return 0.0
+
+    # Wilder-smooth ATR, +DM, -DM then build a DX series
+    s_tr = sum(trs[:period])
+    s_pdm = sum(pdms[:period])
+    s_mdm = sum(mdms[:period])
+
+    def _dx(s_tr_: float, s_pdm_: float, s_mdm_: float) -> float:
+        if s_tr_ == 0:
+            return 0.0
+        pdi = 100.0 * s_pdm_ / s_tr_
+        mdi = 100.0 * s_mdm_ / s_tr_
+        di_sum = pdi + mdi
+        return 100.0 * abs(pdi - mdi) / di_sum if di_sum else 0.0
+
+    dx_series: list[float] = [_dx(s_tr, s_pdm, s_mdm)]
+    for i in range(period, len(trs)):
+        s_tr = s_tr - s_tr / period + trs[i]
+        s_pdm = s_pdm - s_pdm / period + pdms[i]
+        s_mdm = s_mdm - s_mdm / period + mdms[i]
+        dx_series.append(_dx(s_tr, s_pdm, s_mdm))
+
+    if len(dx_series) < period:
+        return 0.0
+
+    # Wilder-smooth DX → ADX
+    adx = sum(dx_series[:period]) / period
+    for dx in dx_series[period:]:
+        adx = adx - adx / period + dx
+    return adx

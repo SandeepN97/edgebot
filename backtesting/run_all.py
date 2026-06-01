@@ -37,17 +37,30 @@ def _fmt_dd(v: float | None) -> str:
 
 
 def _print_results(results: dict) -> None:
+    """Print either a tune dict (symbol→PeriodResult) or full dict (symbol→tuple)."""
     print(f"\n{_SEP}")
-    print("BACKTEST RESULTS — Train (2021-2023) vs Test (2024)")
+    # Detect whether we have a tune dict or full train/test dict
+    first = next(iter(results.values()))
+    is_tune = not isinstance(first, tuple)
+
+    if is_tune:
+        print("TUNE RESULTS — 2021-2022 ONLY  (2023-2024 sealed)")
+    else:
+        print("BACKTEST RESULTS — Train (2021-2023) vs Test (2024)")
     print(_SEP)
-    header = f"{'Symbol':<12} {'Period':<6} {'Sharpe':>8} {'MaxDD':>8} {'WinRate':>8} {'Trades':>7} {'Final $':>9} {'AvgDur':>8}"
+
+    header = (
+        f"{'Symbol':<12} {'Period':<18} {'Sharpe':>8} {'MaxDD':>8} "
+        f"{'WinRate':>8} {'Trades':>7} {'Final $':>9} {'AvgDur':>8}"
+    )
     print(header)
     print("-" * len(header))
-    for symbol, (train, test) in results.items():
-        for r in (train, test):
+
+    if is_tune:
+        for symbol, r in results.items():
             avg_h = f"{r.avg_bars * 4:.0f}h" if r.avg_bars else "N/A"
             print(
-                f"{symbol:<12} {r.period:<6} "
+                f"{symbol:<12} {r.period:<18} "
                 f"{_fmt_sharpe(r.sharpe):>8} "
                 f"{_fmt_dd(r.max_dd_pct):>8} "
                 f"{r.win_rate:>7.1%} "
@@ -55,10 +68,70 @@ def _print_results(results: dict) -> None:
                 f"${r.final_value:>8.2f} "
                 f"{avg_h:>8}"
             )
-        print()
+    else:
+        for symbol, (train, test) in results.items():
+            for r in (train, test):
+                avg_h = f"{r.avg_bars * 4:.0f}h" if r.avg_bars else "N/A"
+                print(
+                    f"{symbol:<12} {r.period:<18} "
+                    f"{_fmt_sharpe(r.sharpe):>8} "
+                    f"{_fmt_dd(r.max_dd_pct):>8} "
+                    f"{r.win_rate:>7.1%} "
+                    f"{r.total_trades:>7} "
+                    f"${r.final_value:>8.2f} "
+                    f"{avg_h:>8}"
+                )
+            print()
+
+
+def _check_tune_gate(results: dict) -> bool:
+    """Gate check for the tune window (2021-2022). Sharpe floor 0.5, DD ceiling 30%."""
+    print(_SEP)
+    print("TUNE GATE — 2021-2022  (holdout 2023-2024 still sealed)")
+    print(_SEP)
+
+    first = next(iter(results.values()))
+    is_tune = not isinstance(first, tuple)
+
+    all_pass = True
+    items = results.items() if is_tune else [
+        (sym, r) for sym, (r, _) in results.items()
+    ]
+
+    for symbol, r in items:
+        issues: list[str] = []
+
+        if r.sharpe is not None and r.sharpe < 0.5:
+            issues.append(f"Sharpe {r.sharpe:.3f} < 0.50 floor")
+            all_pass = False
+        elif r.sharpe is None:
+            issues.append("Sharpe unavailable — too few trades")
+
+        if r.max_dd_pct is not None and r.max_dd_pct > 30.0:
+            issues.append(f"Max DD {r.max_dd_pct:.1f}% > 30% ceiling")
+            all_pass = False
+
+        status = "FAIL" if issues else "PASS"
+        print(f"\n{symbol}  [{status}]")
+        for issue in issues:
+            print(f"  ⚠  {issue}")
+        if not issues:
+            print("  ✓  Tune gate cleared")
+
+    if not all_pass:
+        _suggest_adjustments(results)
+
+    print(f"\n{_SEP}")
+    if all_pass:
+        print("✓  Tune gate PASSED — ready to unseal 2023-2024 for final verdict")
+    else:
+        print("✗  Tune gate FAILED — iterate before unsealing holdout")
+    print(_SEP)
+    return all_pass
 
 
 def _check_decision_gate(results: dict) -> bool:
+    """Full train/test gate — only called for the final holdout run."""
     print(_SEP)
     print("DECISION GATE")
     print(_SEP)
@@ -68,19 +141,16 @@ def _check_decision_gate(results: dict) -> bool:
     for symbol, (train, test) in results.items():
         issues: list[str] = []
 
-        # Gate 1: test Sharpe floor
         if test.sharpe is not None and test.sharpe < 0.5:
             issues.append(f"Test Sharpe {test.sharpe:.3f} < 0.50 (floor)")
             all_pass = False
         elif test.sharpe is None:
             issues.append("Test Sharpe unavailable (too few trades?)")
 
-        # Gate 2: drawdown ceiling
         if test.max_dd_pct is not None and test.max_dd_pct > 30.0:
             issues.append(f"Test max DD {test.max_dd_pct:.1f}% > 30% ceiling")
             all_pass = False
 
-        # Gate 3: overfitting check
         if train.sharpe and train.sharpe > 0 and test.sharpe is not None:
             ratio = test.sharpe / train.sharpe
             if ratio < 0.70:
@@ -114,8 +184,11 @@ def _suggest_adjustments(results: dict) -> None:
 
     # Collect regime performance data to give targeted advice
     all_trades: list[dict] = []
-    for symbol, (train, test) in results.items():
-        for r in (train, test):
+    first = next(iter(results.values()))
+    is_tune = not isinstance(first, tuple)
+    for symbol, val in results.items():
+        period_results = [val] if is_tune else list(val)
+        for r in period_results:
             for t in r.trade_log:
                 all_trades.append({**t, "symbol": symbol})
 
@@ -191,12 +264,12 @@ def main() -> None:
             print(f"  {symbol}: {counts}")
 
     # ------------------------------------------------------------------
-    # Step 4: Backtest
+    # Step 4: Backtest — tune window only (2021-2022)
     # ------------------------------------------------------------------
-    print("\n[4/4] Running backtests (this may take a minute)...")
-    from backtesting.engine.backtest_runner import run_backtest_all
+    print("\n[4/4] Running backtest on TUNE window 2021-2022 (holdout sealed)...")
+    from backtesting.engine.backtest_runner import run_tune_all
 
-    results = run_backtest_all()
+    results = run_tune_all()
 
     if not results:
         print("No results — check that raw data downloaded successfully.")
@@ -207,11 +280,7 @@ def main() -> None:
     # ------------------------------------------------------------------
     _print_results(results)
 
-    from backtesting.reports.generate_report import generate_report
-
-    generate_report(results)
-
-    passed = _check_decision_gate(results)
+    passed = _check_tune_gate(results)
     sys.exit(0 if passed else 1)
 
 
