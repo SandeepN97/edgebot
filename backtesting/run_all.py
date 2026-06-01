@@ -84,6 +84,53 @@ def _print_results(results: dict) -> None:
             print()
 
 
+def _print_regime_breakdown(results: dict) -> None:
+    """Show per-strategy per-regime trade stats from combined trade logs."""
+    import pandas as pd
+
+    all_trades: list[dict] = []
+    first = next(iter(results.values()))
+    is_tune = not isinstance(first, tuple)
+    for symbol, val in results.items():
+        period_results = [val] if is_tune else list(val)
+        for r in period_results:
+            for t in r.trade_log:
+                if "strategy" in t:
+                    all_trades.append({**t, "symbol": symbol})
+
+    if not all_trades:
+        return
+
+    df = pd.DataFrame(all_trades)
+    print(f"\n{_SEP}")
+    print("REGIME BREAKDOWN (combined router)")
+    print(_SEP)
+    header = f"{'Strategy':<6} {'Regime':<10} {'Trades':>7} {'Win Rate':>9} {'Avg PnL':>9} {'Total PnL':>10}"
+    print(header)
+    print("-" * len(header))
+
+    grouped = (
+        df.groupby(["strategy", "regime"])
+        .agg(
+            trades=("pnl", "count"),
+            win_rate=("pnl", lambda x: (x > 0).mean()),
+            avg_pnl=("pnl", "mean"),
+            total_pnl=("pnl", "sum"),
+        )
+        .reset_index()
+        .sort_values(["strategy", "regime"])
+    )
+    for _, row in grouped.iterrows():
+        label = "EMA" if row["strategy"] == "ema" else "MR "
+        print(
+            f"{label:<6} {row['regime']:<10} "
+            f"{int(row['trades']):>7} "
+            f"{row['win_rate']:>8.1%} "
+            f"${row['avg_pnl']:>8.4f} "
+            f"${row['total_pnl']:>9.4f}"
+        )
+
+
 def _check_tune_gate(results: dict) -> bool:
     """Gate check for the tune window (2021-2022). Sharpe floor 0.5, DD ceiling 30%."""
     print(_SEP)
@@ -264,12 +311,12 @@ def main() -> None:
             print(f"  {symbol}: {counts}")
 
     # ------------------------------------------------------------------
-    # Step 4: Backtest — tune window only (2021-2022)
+    # Step 4: Combined router backtest — tune window only (2021-2022)
     # ------------------------------------------------------------------
-    print("\n[4/4] Running backtest on TUNE window 2021-2022 (holdout sealed)...")
-    from backtesting.engine.backtest_runner import run_tune_all
+    print("\n[4/4] Running COMBINED router backtest on TUNE 2021-2022 (holdout sealed)...")
+    from backtesting.engine.backtest_runner import run_combined_tune_all
 
-    results = run_tune_all()
+    results = run_combined_tune_all()
 
     if not results:
         print("No results — check that raw data downloaded successfully.")
@@ -279,6 +326,7 @@ def main() -> None:
     # Output
     # ------------------------------------------------------------------
     _print_results(results)
+    _print_regime_breakdown(results)
 
     passed = _check_tune_gate(results)
     sys.exit(0 if passed else 1)
