@@ -476,9 +476,7 @@ def _make_combined_strategy_class() -> type:
 
             if regime == "TRENDING":
                 self._try_ema_entry(atr, bar_idx)
-            elif regime == "RANGING":
-                self._try_mr_entry(atr, bar_idx)
-            # NEUTRAL / VOLATILE → sit out
+            # RANGING / NEUTRAL / VOLATILE → sit out (mirrors router)
 
         def _try_ema_entry(self, atr: float, bar_idx: int) -> None:
             rsi_ok = self.p.rsi_ema_low <= self.rsi[0] <= self.p.rsi_ema_high

@@ -14,9 +14,9 @@ class TestStrategyRouter:
         d = self.router.route("TRENDING")
         assert d.strategy_id == "ema_crossover_4h"
 
-    def test_ranging_routes_to_mean_reversion(self) -> None:
+    def test_ranging_sits_out(self) -> None:
         d = self.router.route("RANGING")
-        assert d.strategy_id == "mean_reversion_4h"
+        assert d.strategy_id is None
 
     def test_neutral_sits_out(self) -> None:
         d = self.router.route("NEUTRAL")
@@ -33,8 +33,8 @@ class TestStrategyRouter:
     def test_trending_should_trade_is_true(self) -> None:
         assert self.router.route("TRENDING").should_trade is True
 
-    def test_ranging_should_trade_is_true(self) -> None:
-        assert self.router.route("RANGING").should_trade is True
+    def test_ranging_should_trade_is_false(self) -> None:
+        assert self.router.route("RANGING").should_trade is False
 
     def test_neutral_should_trade_is_false(self) -> None:
         assert self.router.route("NEUTRAL").should_trade is False

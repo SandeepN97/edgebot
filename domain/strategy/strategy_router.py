@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 _REGIME_MAP: dict[str, str | None] = {
     "TRENDING": "ema_crossover_4h",
-    "RANGING": "mean_reversion_4h",
+    "RANGING": None,   # sit out — MR not routed this round
     "NEUTRAL": None,
     "VOLATILE": None,
 }
