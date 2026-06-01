@@ -36,6 +36,12 @@ TUNE_END = "2023-01-01"    # exclusive: 2021 + 2022 only
 STARTING_CASH = 100.0
 COMMISSION = 0.001         # 0.1 % Binance taker
 BARS_PER_YEAR = 2190       # 365 × 6  (24/7 crypto, 4h bars)
+BARS_PER_YEAR_DAILY = 252  # standard trading-year convention (user-specified)
+
+# Daily tune window: earliest available history through end of 2021.
+# 2022-2024 are the sealed holdout for the daily test.
+DAILY_TUNE_START = "2017-01-01"
+DAILY_TUNE_END = "2022-01-01"   # exclusive: covers ~2017-2021
 
 
 @dataclass
@@ -699,6 +705,116 @@ def run_combined_tune_all() -> dict[str, PeriodResult]:
     for symbol in SYMBOLS:
         try:
             results[symbol] = run_combined_tune_symbol(symbol)
+        except FileNotFoundError as exc:
+            logger.error("%s", exc)
+    return results
+
+
+# ------------------------------------------------------------------
+# Daily timeframe runner: EMA-trending-only on 1d bars
+# ------------------------------------------------------------------
+
+def _run_daily_combined_period(
+    features: pd.DataFrame,
+    symbol: str,
+    period_label: str,
+    start: str,
+    end: str,
+    starting_cash: float = STARTING_CASH,
+) -> PeriodResult:
+    import backtrader as bt  # type: ignore[import]
+
+    mask = (features.index >= start) & (features.index < end)
+    period_df = features[mask].copy()
+
+    if len(period_df) < 50:
+        logger.warning(
+            "%s %s: only %d bars — skipping (need ≥50)", symbol, period_label, len(period_df)
+        )
+        return PeriodResult(symbol, period_label, None, None, 0.0, 0, starting_cash, 0.0)
+
+    feed_df = period_df[["open", "high", "low", "close", "volume"]].copy()
+    if feed_df.index.tz is not None:
+        feed_df.index = feed_df.index.tz_localize(None)
+
+    CombinedRouterBT = _make_combined_strategy_class()
+
+    cerebro = bt.Cerebro(stdstats=False)
+    cerebro.adddata(
+        bt.feeds.PandasData(
+            dataname=feed_df,
+            timeframe=bt.TimeFrame.Days,
+            compression=1,
+        )
+    )
+    cerebro.broker.setcash(starting_cash)
+    cerebro.broker.setcommission(commission=COMMISSION)
+    cerebro.addstrategy(CombinedRouterBT, features_df=period_df)
+
+    cerebro.addanalyzer(
+        bt.analyzers.SharpeRatio,
+        _name="sharpe",
+        timeframe=bt.TimeFrame.Days,
+        compression=1,
+        factor=BARS_PER_YEAR_DAILY,
+        annualize=True,
+        riskfreerate=0.0,
+    )
+    cerebro.addanalyzer(bt.analyzers.DrawDown, _name="drawdown")
+    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="trades")
+
+    results = cerebro.run(maxcpus=1)
+    strat = results[0]
+
+    sharpe_raw = strat.analyzers.sharpe.get_analysis()
+    dd_raw = strat.analyzers.drawdown.get_analysis()
+    trades_raw = strat.analyzers.trades.get_analysis()
+
+    sharpe = sharpe_raw.get("sharperatio")
+    max_dd = dd_raw.get("max", {}).get("drawdown")
+    total = trades_raw.get("total", {}).get("closed", 0)
+    won = trades_raw.get("won", {}).get("total", 0)
+    win_rate = won / total if total else 0.0
+    final_value = cerebro.broker.getvalue()
+    avg_bars = (
+        sum(t["bars"] for t in strat.trade_log) / len(strat.trade_log)
+        if strat.trade_log else 0.0
+    )
+
+    return PeriodResult(
+        symbol=symbol,
+        period=period_label,
+        sharpe=sharpe,
+        max_dd_pct=max_dd,
+        win_rate=win_rate,
+        total_trades=total,
+        final_value=final_value,
+        avg_bars=avg_bars,
+        trade_log=strat.trade_log,
+    )
+
+
+def run_daily_tune_symbol(symbol: str) -> PeriodResult:
+    """Run EMA-trending-only on daily bars for the tune window (~2017-2021)."""
+    filename = symbol.replace("/", "_")
+    feat_path = FEAT_DIR / f"{filename}_1d.parquet"
+    if not feat_path.exists():
+        raise FileNotFoundError(f"Daily features not found: {feat_path} — run daily pipeline first")
+
+    features = pd.read_parquet(feat_path)
+    label = f"DAILY TUNE ~2017-2021  ({len(features)} bars)"
+    return _run_daily_combined_period(
+        features, symbol, label, DAILY_TUNE_START, DAILY_TUNE_END
+    )
+
+
+def run_daily_tune_all() -> dict[str, PeriodResult]:
+    """Run daily EMA-trending-only tune for all symbols. Sealed 2022-2024 never touched."""
+    results: dict[str, PeriodResult] = {}
+    for symbol in SYMBOLS:
+        try:
+            results[symbol] = run_daily_tune_symbol(symbol)
+            print(f"  {symbol}: done")
         except FileNotFoundError as exc:
             logger.error("%s", exc)
     return results

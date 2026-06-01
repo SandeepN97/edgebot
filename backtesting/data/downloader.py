@@ -24,6 +24,8 @@ SYMBOLS = ["BTC/USDT", "ETH/USDT", "BNB/USDT"]
 START_DATE = "2021-01-01"
 END_DATE = "2024-12-31"
 TIMEFRAME = "4h"
+DAILY_START_DATE = "2017-01-01"   # fetch longest available history for daily
+DAILY_TIMEFRAME = "1d"
 CANDLES_PER_REQUEST = 1000
 RAW_DIR = Path(__file__).parent / "raw"
 
@@ -41,9 +43,10 @@ def download_symbol(
     symbol: str,
     start: str = START_DATE,
     end: str = END_DATE,
+    timeframe: str = TIMEFRAME,
     force: bool = False,
 ) -> pd.DataFrame:
-    out_path = RAW_DIR / f"{_safe_filename(symbol)}_4h.parquet"
+    out_path = RAW_DIR / f"{_safe_filename(symbol)}_{timeframe}.parquet"
     if out_path.exists() and not force:
         logger.info("[cache] %s — %s already exists, skipping", symbol, out_path.name)
         df = pd.read_parquet(out_path)
@@ -55,10 +58,10 @@ def download_symbol(
 
     all_candles: list[list] = []
     since = start_ms
-    logger.info("Downloading %s 4h candles %s → %s", symbol, start, end)
+    logger.info("Downloading %s %s candles %s → %s", symbol, timeframe, start, end)
 
     while since < end_ms:
-        batch = exchange.fetch_ohlcv(symbol, TIMEFRAME, since=since, limit=CANDLES_PER_REQUEST)
+        batch = exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=CANDLES_PER_REQUEST)
         if not batch:
             break
         batch = [c for c in batch if c[0] < end_ms]
@@ -114,6 +117,25 @@ def download_all(force: bool = False) -> dict[str, pd.DataFrame]:
             results[symbol] = download_symbol(exchange, symbol, force=force)
         except Exception as exc:
             logger.error("Failed to download %s: %s", symbol, exc)
+    return results
+
+
+def download_daily_all(force: bool = False) -> dict[str, pd.DataFrame]:
+    """Download daily OHLCV for all symbols, fetching the longest history available."""
+    exchange = _make_exchange()
+    results: dict[str, pd.DataFrame] = {}
+    for symbol in SYMBOLS:
+        try:
+            results[symbol] = download_symbol(
+                exchange,
+                symbol,
+                start=DAILY_START_DATE,
+                end=END_DATE,
+                timeframe=DAILY_TIMEFRAME,
+                force=force,
+            )
+        except Exception as exc:
+            logger.error("Failed to download daily %s: %s", symbol, exc)
     return results
 
 

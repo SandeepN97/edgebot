@@ -123,9 +123,9 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     return out.dropna(subset=["ema200", "adx14", "volume_ratio"])
 
 
-def compute_features_for_symbol(symbol: str) -> pd.DataFrame:
+def compute_features_for_symbol(symbol: str, timeframe: str = "4h") -> pd.DataFrame:
     filename = _safe_filename(symbol)
-    raw_path = RAW_DIR / f"{filename}_4h.parquet"
+    raw_path = RAW_DIR / f"{filename}_{timeframe}.parquet"
     if not raw_path.exists():
         raise FileNotFoundError(f"Raw data not found: {raw_path} — run downloader first")
 
@@ -133,19 +133,19 @@ def compute_features_for_symbol(symbol: str) -> pd.DataFrame:
     features = compute_features(df)
 
     FEAT_DIR.mkdir(parents=True, exist_ok=True)
-    out_path = FEAT_DIR / f"{filename}_4h.parquet"
+    out_path = FEAT_DIR / f"{filename}_{timeframe}.parquet"
     features.to_parquet(out_path)
     logger.info("Features saved to %s (%d rows)", out_path, len(features))
     return features
 
 
-def compute_features_all() -> dict[str, pd.DataFrame]:
+def compute_features_all(timeframe: str = "4h") -> dict[str, pd.DataFrame]:
     from backtesting.data.downloader import SYMBOLS
 
     results: dict[str, pd.DataFrame] = {}
     for symbol in SYMBOLS:
         try:
-            df = compute_features_for_symbol(symbol)
+            df = compute_features_for_symbol(symbol, timeframe=timeframe)
             results[symbol] = df
             print(f"  {symbol}: {len(df)} bars with features")
         except FileNotFoundError as exc:
