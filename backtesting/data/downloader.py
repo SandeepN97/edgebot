@@ -26,6 +26,13 @@ END_DATE = "2024-12-31"
 TIMEFRAME = "4h"
 DAILY_START_DATE = "2017-01-01"   # fetch longest available history for daily
 DAILY_TIMEFRAME = "1d"
+
+# 10-coin universe for cross-sectional rotation
+ROTATION_SYMBOLS = [
+    "BTC/USDT", "ETH/USDT", "BNB/USDT",
+    "SOL/USDT", "XRP/USDT", "ADA/USDT",
+    "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
+]
 CANDLES_PER_REQUEST = 1000
 RAW_DIR = Path(__file__).parent / "raw"
 
@@ -136,6 +143,29 @@ def download_daily_all(force: bool = False) -> dict[str, pd.DataFrame]:
             )
         except Exception as exc:
             logger.error("Failed to download daily %s: %s", symbol, exc)
+    return results
+
+
+def download_rotation_all(force: bool = False) -> dict[str, pd.DataFrame]:
+    """Download daily 1d OHLCV for the 10-coin rotation universe.
+
+    Skips symbols not available on the exchange rather than raising, so the
+    rotation engine works with whatever subset downloaded successfully.
+    """
+    exchange = _make_exchange()
+    results: dict[str, pd.DataFrame] = {}
+    for symbol in ROTATION_SYMBOLS:
+        try:
+            results[symbol] = download_symbol(
+                exchange,
+                symbol,
+                start=DAILY_START_DATE,
+                end=END_DATE,
+                timeframe=DAILY_TIMEFRAME,
+                force=force,
+            )
+        except Exception as exc:
+            logger.warning("Skipping %s: %s", symbol, exc)
     return results
 
 

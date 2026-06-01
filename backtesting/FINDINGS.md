@@ -5,8 +5,8 @@ No strategy reached a tradeable edge. This document captures what was tested,
 the evidence, the diagnosis, and why the edge-hunt was stopped — so the
 conclusion rests on facts, not memory.
 
-**Status:** Step 2 (backtest) complete. Decision gate: **NOT PASSED** — edge-hunt
-stopped deliberately. Project paused before paper trading (Step 3).
+**Status:** Step 2 (backtest) active. Seven rounds completed; gate not yet cleared.
+Sealed 2022-2024 holdout intact and untouched.
 
 Validation discipline used throughout: train/test holdout split, one parameter
 change per round, stopping rules set before reading results, sealed holdout never
@@ -27,6 +27,7 @@ strict tune-window / sealed-holdout split:
 | 4 | EMA + Mean-reversion + regime router | 4h | Added MR for ranging regimes | FAIL — MR lost $21.61 over 112 ranging trades |
 | 5 | EMA-only, trending-regime-only | 4h | Removed MR entirely | FAIL — same 8-11 trades, binding constraint unchanged |
 | 6 | EMA-trending-only | 1d (daily) | Longer history, daily bars | FAIL — 0-3 trades per symbol, filter squeeze confirmed |
+| 7 | Cross-sectional relative-strength rotation | 1d (daily) | 10-coin universe, 90d momentum, top-2 EW | PARTIAL — beats BTC B&H, loses to EW hold-all; gate not cleared |
 
 Symbols tested throughout: BTC/USDT, ETH/USDT, BNB/USDT.  
 Data source: Binance (binanceus auto-selected; okx fallback).  
@@ -157,6 +158,81 @@ parameter tweaks on these strategies):
   deliberately, not a bug to fix
 - Different market structure or instruments
 - A genuinely different signal family, validated with the same holdout discipline
+
+---
+
+## Round 7 — Cross-Sectional Relative-Strength Rotation
+
+### Spec
+
+| Parameter | Value |
+|-----------|-------|
+| Universe | BTC, ETH, BNB, SOL, XRP, ADA, DOGE, AVAX, LINK, DOT (10 coins) |
+| Signal | Risk-adjusted 90-day momentum: `total_return / daily_return_std` |
+| Holding | Top-2 by score, equal weight |
+| Rebalance | Every 5 trading days (weekly) |
+| Cash filter | ON — hold cash when all candidate scores ≤ 0 |
+| Commission | 0.1% per trade side |
+| Starting cash | $100 |
+| Tune window | Oct 2019 – Dec 2021 (earliest binanceus data → 2021-12-31) |
+| Holdout | 2022-2024 — sealed, never run |
+
+Rationale for the wider universe: three correlated large-caps (BTC/ETH/BNB) have
+almost no cross-section to rotate across. The 10-coin universe provides the
+dispersion the strategy needs; signal comes from relative performance differences,
+not absolute direction.
+
+### Results (tune window: Oct 2019 – Dec 2021)
+
+|  | Rotation | BTC buy-and-hold | EW hold-all |
+|--|---------|-----------------|-------------|
+| Total return | +866.4% | +365.4% | +1,098.2% |
+| Final value | $966.37 | $465.39 | $1,198.15 |
+| Sharpe | +1.250 | +1.062 | +1.370 |
+| Max drawdown | 65.6% | 53.4% | 60.3% |
+
+Simulation stats: 167 rebalances, 261 trades, 29 periods in cash (~17% of time).
+
+### Verdict: gate not cleared
+
+**What passed:** rotation beats BTC buy-and-hold by a wide margin (+866% vs
++365%). That gap is real — the strategy is correctly identifying relative winners
+(SOL and BNB led in late 2021; rotation held them). Cross-sectional signal exists.
+
+**What failed:** rotation loses to equal-weight-hold-all (+866% vs +1,098%), with
+worse drawdown (65.6% vs 60.3%). The gate requires beating both benchmarks; it
+cleared only one.
+
+### The key insight: bull-run structural bias
+
+The tune window (Oct 2019 – Dec 2021) is the one market regime in which rotation's
+defining feature — selective exposure and a cash filter — is a pure cost rather than
+a benefit. When nearly every asset in the universe is rising simultaneously and
+strongly (as in a broad crypto bull run), holding everything always beats holding the
+best subset, because:
+
+- Equal-weight captures 100% of every asset's upside at all times.
+- Rotation's cash filter sat out ~17% of rebalancing periods. In a bull run, that
+  time in cash is return left on the table.
+- Each rotation trade costs commission; equal-weight pays commission once (day 1).
+
+This is **not a tuning failure**. No adjustment to lookback period, top-N count, or
+rebalancing frequency changes the structural arithmetic: in a broad bull, selectivity
+costs return. The strategy's downside protection (the cash filter, the momentum tilt
+away from laggards) only earns its keep in a market with genuine dispersion and
+drawdown — i.e., a regime with a bear leg.
+
+### What a fair test requires
+
+The 2022 bear market — crypto's worst since 2018, with most coins down 60-80% — is
+exactly the environment where rotation's cash filter and selectivity should show their
+value relative to equal-weight. That data lives in the sealed 2022-2024 holdout.
+
+**Spending the holdout must be a one-shot no-tuning final verdict**, not a tuning
+exercise. If the decision is made to unseal:
+- Run once, read straight.
+- Do not adjust parameters based on holdout results.
+- The verdict is binding regardless of outcome.
 
 ---
 
