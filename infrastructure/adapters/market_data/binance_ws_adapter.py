@@ -2,6 +2,10 @@
 
 Implements IMarketDataPort using the ccxt.pro (ccxt async WebSocket) library.
 Each closed candle is converted to a MarketSnapshot and yielded to callers.
+
+Reconnection: up to MAX_RECONNECT_RETRIES consecutive failures per subscription,
+with exponential backoff (1s → 2s → 4s → 8s → 16s).  After all retries are
+exhausted the subscription is removed and a CRITICAL log is emitted.
 """
 
 from __future__ import annotations
@@ -16,9 +20,19 @@ from domain.entities.market_snapshot import MarketSnapshot
 
 logger = logging.getLogger(__name__)
 
+MAX_RECONNECT_RETRIES = 5
+_BACKOFF_BASE = 1.0
+_BACKOFF_CAP = 30.0
+
+ROTATION_SYMBOLS = [
+    "BTC/USDT", "ETH/USDT", "BNB/USDT",
+    "SOL/USDT", "XRP/USDT", "ADA/USDT",
+    "DOGE/USDT", "AVAX/USDT", "LINK/USDT", "DOT/USDT",
+]
+
 
 class BinanceWsAdapter(IMarketDataPort):
-    """CCXT-based WebSocket adapter for Binance spot/futures candle streaming.
+    """CCXT-based WebSocket adapter for Binance spot candle streaming.
 
     Args:
         api_key:     Binance API key (read-only permissions sufficient).
@@ -79,6 +93,11 @@ class BinanceWsAdapter(IMarketDataPort):
         asyncio.create_task(self._stream_candles(symbol, timeframe))
         logger.info("Subscribed to %s %s", symbol, timeframe)
 
+    async def subscribe_rotation_universe(self, timeframe: str = "1d") -> None:
+        """Subscribe to all 10 rotation universe symbols at once."""
+        for sym in ROTATION_SYMBOLS:
+            await self.subscribe(sym, timeframe)
+
     async def unsubscribe(self, symbol: str, timeframe: str) -> None:
         self._subscriptions.discard((symbol, timeframe))
         logger.info("Unsubscribed from %s %s", symbol, timeframe)
@@ -113,12 +132,21 @@ class BinanceWsAdapter(IMarketDataPort):
     # ------------------------------------------------------------------
 
     async def _stream_candles(self, symbol: str, timeframe: str) -> None:
-        """Background task: watch candles and push closed ones to the queue."""
+        """Background task: watch candles and push closed ones to the queue.
+
+        Retries up to MAX_RECONNECT_RETRIES times with exponential backoff.
+        Removes the subscription after all retries are exhausted.
+        """
         self._require_connected()
-        prev_ts = None
+        prev_ts: int | None = None
+        consecutive_errors = 0
+        backoff = _BACKOFF_BASE
+
         while (symbol, timeframe) in self._subscriptions:
             try:
                 candles = await self._exchange.watch_ohlcv(symbol, timeframe)
+                consecutive_errors = 0
+                backoff = _BACKOFF_BASE
                 for row in candles:
                     ts = row[0]
                     if ts != prev_ts:
@@ -126,8 +154,21 @@ class BinanceWsAdapter(IMarketDataPort):
                         await self._snapshot_queue.put(snapshot)
                         prev_ts = ts
             except Exception as exc:
-                logger.error("Stream error for %s %s: %s", symbol, timeframe, exc)
-                await asyncio.sleep(5)
+                consecutive_errors += 1
+                if consecutive_errors >= MAX_RECONNECT_RETRIES:
+                    logger.critical(
+                        "Stream %s %s failed %d consecutive times — subscription removed. "
+                        "Last error: %s",
+                        symbol, timeframe, MAX_RECONNECT_RETRIES, exc,
+                    )
+                    self._subscriptions.discard((symbol, timeframe))
+                    return
+                logger.warning(
+                    "Stream error %s %s (attempt %d/%d): %s — retrying in %.0fs",
+                    symbol, timeframe, consecutive_errors, MAX_RECONNECT_RETRIES, exc, backoff,
+                )
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, _BACKOFF_CAP)
 
     @staticmethod
     def _candle_to_snapshot(

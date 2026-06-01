@@ -5,13 +5,14 @@ version: "3.9"
 
 services:
 
-  # ── EdgeBot trading application ──────────────────────────────────────────
+  # ── EdgeBot rotation paper-trader ────────────────────────────────────────
   edgebot:
     build:
       context: .
       dockerfile: docker/Dockerfile
     container_name: edgebot
     restart: unless-stopped
+    command: python main.py
     env_file:
       - .env
     volumes:

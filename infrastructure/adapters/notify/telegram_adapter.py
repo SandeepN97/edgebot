@@ -7,6 +7,7 @@ Messages are formatted in Markdown and include emoji severity indicators.
 from __future__ import annotations
 
 import logging
+from datetime import date
 
 from application.ports.output.i_notify_port import AlertLevel, INotifyPort
 from domain.entities.order import Order
@@ -54,6 +55,77 @@ class TelegramAdapter(INotifyPort):
                 )
             self._bot = Bot(token=self._token)
         return self._bot
+
+    # ------------------------------------------------------------------
+    # Rotation-specific notifications
+    # ------------------------------------------------------------------
+
+    async def send_rebalance_alert(
+        self,
+        rebalance_date: date,
+        basket_before: list[str],
+        basket_after: list[str],
+        scores: dict[str, float],
+        portfolio_value: float,
+        week_pnl: float,
+        in_cash: bool = False,
+    ) -> None:
+        """Send a rotation rebalance summary to Telegram."""
+        entered = [s.split("/")[0] for s in basket_after if s not in basket_before]
+        exited = [s.split("/")[0] for s in basket_before if s not in basket_after]
+        held = [s.split("/")[0] for s in basket_after if s in basket_before]
+
+        lines = [f"🔄 *Rotation Rebalance — {rebalance_date}*\n"]
+
+        if entered:
+            lines.append(f"  ➕ Entered : `{', '.join(entered)}`")
+        if exited:
+            lines.append(f"  ➖ Exited  : `{', '.join(exited)}`")
+        if held:
+            lines.append(f"  ↔️  Held    : `{', '.join(held)}`")
+
+        basket_str = ", ".join(s.split("/")[0] for s in basket_after) or "CASH"
+        lines.append(f"\n  📦 Basket  : `{basket_str}`")
+        lines.append(f"  💼 NAV     : `${portfolio_value:.2f}`")
+
+        pnl_emoji = "📈" if week_pnl >= 0 else "📉"
+        lines.append(f"  {pnl_emoji} Week PnL : `{week_pnl:+.2f} USDT`")
+
+        if scores:
+            top_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)[:5]
+            score_str = "  ".join(
+                f"{s.split('/')[0]}={v:+.1f}" for s, v in top_scores
+            )
+            lines.append(f"\n  📊 Top scores: `{score_str}`")
+
+        await self.send_message("\n".join(lines), AlertLevel.INFO)
+
+    async def send_cash_filter_alert(
+        self,
+        rebalance_date: date,
+        portfolio_value: float,
+        scores: dict[str, float],
+    ) -> None:
+        """Alert that the cash filter activated — all momentum scores negative."""
+        if scores:
+            worst = sorted(scores.items(), key=lambda x: x[1])[:3]
+            score_str = "  ".join(
+                f"{s.split('/')[0]}={v:+.1f}" for s, v in worst
+            )
+        else:
+            score_str = "no scores computed"
+
+        message = (
+            f"💸 *Cash Filter Activated — {rebalance_date}*\n\n"
+            f"  Sitting in cash this week — top momentum negative.\n"
+            f"  💼 NAV: `${portfolio_value:.2f}`\n"
+            f"  📊 Worst scores: `{score_str}`"
+        )
+        await self.send_message(message, AlertLevel.WARNING)
+
+    # ------------------------------------------------------------------
+    # INotifyPort implementation
+    # ------------------------------------------------------------------
 
     async def send_signal_alert(self, signal: Signal) -> None:
         direction_arrow = "📈" if signal.direction.value == "long" else "📉"

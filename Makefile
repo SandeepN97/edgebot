@@ -63,7 +63,7 @@ backtest-eth:
 
 # ── Run modes ─────────────────────────────────────────────────────────────────
 paper:
-	PAPER_TRADE=true $(PYTHON) -m edgebot.main
+	PAPER_TRADE=true $(PYTHON) main.py
 
 live:
 	@echo "WARNING: Live trading uses real funds. Ensure .env is configured."
