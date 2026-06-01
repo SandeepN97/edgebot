@@ -37,7 +37,7 @@ _ATR_PERIOD = 14
 _ATR_SL_MULTIPLIER = 2.0  # stop-loss = entry ± ATR × 2.0
 _ATR_TP_MULTIPLIER = 3.0  # take-profit = entry ± ATR × 3.0
 _ADX_PERIOD = 14
-_ADX_MIN = 20.0           # skip entry when ADX < 20 (NEUTRAL/RANGING bars)
+_ADX_MIN = 25.0           # skip entry when ADX < 25 (confirmed trend only)
 
 
 class EmaCrossoverStrategy(ISignalPort):

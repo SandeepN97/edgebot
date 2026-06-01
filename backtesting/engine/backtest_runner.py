@@ -72,7 +72,7 @@ def _make_strategy_class() -> type:
             atr_sl_mult=2.0,
             atr_tp_mult=3.0,
             adx_period=14,
-            adx_min=20.0,       # skip entries when trend strength is too weak
+            adx_min=25.0,       # confirmed trend only (matches live _ADX_MIN)
             risk_pct=0.02,
             features_df=None,   # passed at cerebro.addstrategy() time
         )
