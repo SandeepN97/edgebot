@@ -1,11 +1,24 @@
-# EdgeBot
+# EdgeBot — Algorithmic Trading Research with Clean Architecture
 
-A disciplined, research-driven crypto trading system built on Clean Architecture.
-Not a "money machine" — a rigorously tested framework for finding, validating, and
-(eventually) trading statistical edges, with honesty and risk control as first principles.
+> **A research-driven trading platform where a strategy must survive out-of-sample validation before it earns the right to reach paper trading.**
 
-**Current status:** One strategy (cross-sectional relative-strength rotation) has
-passed out-of-sample validation. Advancing to paper trading. No real capital deployed.
+EdgeBot is a **Python algorithmic-trading research system** built around Clean Architecture, explicit risk controls, reproducible backtesting, sealed holdout evaluation, and paper-trading boundaries. It is intentionally not a “money machine” or prediction product; the engineering goal is to separate evidence from curve-fitting and hope.
+
+**Useful for:** engineers and quantitative-development learners interested in backtesting architecture, risk engines, ports-and-adapters design, paper trading, benchmark comparison, and rigorous out-of-sample strategy validation.
+
+### What makes this repository different
+
+| Area | What EdgeBot demonstrates |
+| --- | --- |
+| **Research discipline** | Tune/holdout separation, stopping rules, one-shot holdout verdicts |
+| **Architecture** | Clean / Hexagonal Architecture with replaceable market-data and execution adapters |
+| **Risk** | Position sizing, drawdown circuit breaker, risk/reward rules, config that can tighten but not weaken limits |
+| **Backtesting** | Benchmark comparison and explicit documentation of strategies that failed |
+| **Current validated result** | One relative-strength rotation strategy passed the documented out-of-sample test |
+| **Execution boundary** | Paper trading is the current step; no real capital is deployed |
+| **Testing** | 130+ unit and integration tests |
+
+> **Important:** a successful historical holdout result is evidence, not a guarantee of future returns. This repository is educational research, not financial advice.
 
 ---
 
